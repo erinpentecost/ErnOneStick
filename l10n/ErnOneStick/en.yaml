@@ -1,0 +1,8 @@
+name: "ErnOneStick"
+description: "Play Morrowind with just one analogue stick (instead of two)."
+
+modSettingsTitle: "Mod Options"
+modSettingsDesc: "Change how the mod works."
+
+modSettingsControlsTitle: "Controls"
+modSettingsControlsDesc: "Change the control scheme."
