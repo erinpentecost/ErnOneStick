@@ -44,6 +44,18 @@ end
 local StateFunctions = {}
 StateFunctions.__index = StateFunctions
 
+function StateFunctions.set(self, base)
+    self.base = base
+    if base.onEnter ~= nil then
+        if type(base.onEnter) == "function" then
+            self.onEnter = base.onEnter
+        else
+            error("base.onEnter is not a function")
+            return
+        end
+    end
+end
+
 -- newState creates a new lock state.
 -- If this state is active, calls to the container will forward to base.
 function NewState(base)
@@ -54,16 +66,20 @@ function NewState(base)
     }
     setmetatable(weakRefs, { __mode = 'v' })
     local newState = {
-        base = base,
+        onEnter = function() end,
         weakRefs = weakRefs,
     }
     setmetatable(newState, StateFunctions)
+    if base ~= nil then
+        newState:set(base)
+    end
     return newState
 end
 
 -- push this State onto the StateContainer stack.
 -- the first state pushed is permanent, and can't be popped.
 function StateContainerFunctions.push(self, state)
+    --print("push new state")
     if getmetatable(state) ~= StateFunctions then
         error("can't push non-state object")
         return
@@ -81,11 +97,25 @@ function StateContainerFunctions.push(self, state)
     state.weakRefs.container = self
 
     table.insert(self.stack, 1, state)
+
+    state.onEnter()
 end
 
 function StateContainerFunctions.pop(self)
+    --print("pop old state")
     if #(self.stack) > 0 then
         return table.remove(self.stack, 1)
+    end
+    if #(self.stack) > 0 then
+        self.stack[1].onEnter()
+    end
+end
+
+function StateContainerFunctions.replace(self, state)
+    --print("replace state")
+    StateContainerFunctions.push(self, state)
+    if #(self.stack) > 1 then
+        return table.remove(self.stack, 2)
     end
 end
 

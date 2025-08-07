@@ -17,15 +17,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local interfaces = require("openmw.interfaces")
 local storage = require("openmw.storage")
-local types = require("openmw.types")
-local async = require('openmw.async')
-
 local MOD_NAME = "ErnOneStick"
 
-local SettingsGameplay = storage.globalSection("SettingsGameplay" .. MOD_NAME)
+local SettingsInput = storage.globalSection("SettingsInput" .. MOD_NAME)
+local SettingsAdmin = storage.globalSection("SettingsAdmin" .. MOD_NAME)
 
 local function debugMode()
-    return SettingsGameplay:get("debugMode")
+    return SettingsAdmin:get("debugMode")
 end
 
 local function debugPrint(str, ...)
@@ -39,6 +37,9 @@ local function debugPrint(str, ...)
     end
 end
 
+local function disable()
+    return SettingsAdmin:get("disable")
+end
 
 local function registerPage()
     interfaces.Settings.registerPage {
@@ -51,13 +52,59 @@ end
 
 local function initSettings()
     interfaces.Settings.registerGroup {
-        key = "SettingsGameplay" .. MOD_NAME,
+        key = "SettingsInput" .. MOD_NAME,
         l10n = MOD_NAME,
-        name = "modSettingsControlsTitle",
-        description = "modSettingsControlsDesc",
+        name = "modSettingsInputTitle",
+        description = "modSettingsInputDesc",
         page = MOD_NAME,
         permanentStorage = false,
         settings = { {
+            key = "lockButton",
+            name = "lockButton_name",
+            description = "lockButton_description",
+            default = "y",
+            renderer = "inputBinding",
+            argument = {
+                key = MOD_NAME .. "LockButton",
+                type = "action"
+            },
+        }, {
+            key = "lookSensitivityHorizontal",
+            name = "lookSensitivityHorizontal_name",
+            default = 3,
+            renderer = "number",
+            argument = {
+                integer = false,
+                min = 0.01,
+                max = 100
+            }
+        }, {
+            key = "lookSensitivityVertical",
+            name = "lookSensitivityVertical_name",
+            default = 3,
+            renderer = "number",
+            argument = {
+                integer = false,
+                min = 0.01,
+                max = 100
+            }
+        }, }
+    }
+
+    interfaces.Settings.registerGroup {
+        key = "SettingsAdmin" .. MOD_NAME,
+        l10n = MOD_NAME,
+        name = "modSettingsAdminTitle",
+        description = "modSettingsAdminDesc",
+        page = MOD_NAME,
+        permanentStorage = false,
+        settings = { {
+            key = "disable",
+            name = "disable_name",
+            description = "disable_description",
+            default = false,
+            renderer = "checkbox"
+        }, {
             key = "debugMode",
             name = "debugMode_name",
             description = "debugMode_description",
@@ -69,20 +116,32 @@ local function initSettings()
     print("init settings")
 end
 
-local function onReset(fn)
-    SettingsGameplay:subscribe(async:callback(function(section, key)
-        if key == "resetData" then
-            fn()
+local lookupFuncTable = {
+    __index = function(table, key)
+        local inputSetting = SettingsInput:get(key)
+        if inputSetting ~= nil then
+            return inputSetting
         end
-    end))
-end
 
-return {
+        local adminSetting = SettingsAdmin:get(key)
+        if adminSetting ~= nil then
+            return adminSetting
+        end
+
+        error("no field '" .. key .. "' in settings")
+    end,
+}
+
+local settingsContainer = {
     initSettings = initSettings,
     MOD_NAME = MOD_NAME,
 
     registerPage = registerPage,
 
     debugMode = debugMode,
-    debugPrint = debugPrint
+    debugPrint = debugPrint,
+    disable = disable,
 }
+setmetatable(settingsContainer, lookupFuncTable)
+
+return settingsContainer

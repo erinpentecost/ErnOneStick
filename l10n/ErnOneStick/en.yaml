@@ -4,5 +4,20 @@ description: "Play Morrowind with just one analogue stick (instead of two)."
 modSettingsTitle: "Mod Options"
 modSettingsDesc: "Change how the mod works."
 
-modSettingsControlsTitle: "Controls"
-modSettingsControlsDesc: "Change the control scheme."
+modSettingsInputTitle: "Inputs"
+modSettingsInputDesc: "Change the control scheme."
+
+modSettingsAdminTitle: "Admin"
+modSettingsAdminDesc: "Administrative settings."
+
+lockButton_name: "Lock-On Button"
+lockButton_description: "The key used to trigger lock-on."
+
+lookSensitivityVertical_name: "Look Sensitivity (Vertical)"
+lookSensitivityHorizontal_name: "Look Sensitivity (Horizontal)"
+
+disable_name: "Disabled Mod"
+disable_description: "Turn the mod off. You will need to reload lua afterward."
+
+debugMode_name: "Debug Mode"
+debugMode_description: "Turn on verbose logging."
