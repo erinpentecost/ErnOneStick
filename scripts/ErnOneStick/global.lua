@@ -16,6 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local settings = require("scripts.ErnOneStick.settings")
+local world = require('openmw.world')
 
 if require("openmw.core").API_REVISION < 62 then
     error("OpenMW 0.49 or newer is required!")
@@ -24,4 +25,17 @@ end
 -- Init settings first to init storage which is used everywhere.
 settings.initSettings()
 
-return {}
+local function onPause()
+    world.pause(settings.MOD_NAME)
+end
+
+local function onUnpause()
+    world.unpause(settings.MOD_NAME)
+end
+
+return {
+    eventHandlers = {
+        [settings.MOD_NAME .. "onPause"] = onPause,
+        [settings.MOD_NAME .. "onUnpause"] = onUnpause,
+    }
+}

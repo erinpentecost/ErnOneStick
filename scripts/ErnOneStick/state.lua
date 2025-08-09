@@ -25,7 +25,8 @@ StateContainerFunctions.__index = function(table, key)
         return raw
     elseif #(table.stack) > 0 then
         -- fallback to current state.
-        return table.stack[1].base[key]
+        -- this is bad because self is not base; it is statecontainer.
+        return table.stack[1][key]
     else
         error("empty state stack during '" .. key .. "' access")
     end
@@ -42,18 +43,21 @@ function NewStateContainer()
 end
 
 local StateFunctions = {}
-StateFunctions.__index = StateFunctions
+StateFunctions.__index = function(table, key)
+    local raw = rawget(StateFunctions, key)
+    if raw ~= nil then
+        return raw
+    elseif table.base ~= nil then
+        -- fallback to current state.
+        -- this is bad because self is not base; it is statecontainer.
+        return table.base[key]
+    else
+        error("empty base during '" .. key .. "' access")
+    end
+end
 
 function StateFunctions.set(self, base)
     self.base = base
-    if base.onEnter ~= nil then
-        if type(base.onEnter) == "function" then
-            self.onEnter = base.onEnter
-        else
-            error("base.onEnter is not a function")
-            return
-        end
-    end
 end
 
 -- newState creates a new lock state.
@@ -66,7 +70,6 @@ function NewState(base)
     }
     setmetatable(weakRefs, { __mode = 'v' })
     local newState = {
-        onEnter = function() end,
         weakRefs = weakRefs,
     }
     setmetatable(newState, StateFunctions)
@@ -98,7 +101,9 @@ function StateContainerFunctions.push(self, state)
 
     table.insert(self.stack, 1, state)
 
-    state.onEnter()
+    if state.onEnter ~= nil then
+        state.onEnter(state.base)
+    end
 end
 
 function StateContainerFunctions.pop(self)
@@ -117,6 +122,13 @@ function StateContainerFunctions.replace(self, state)
     if #(self.stack) > 1 then
         return table.remove(self.stack, 2)
     end
+end
+
+function StateContainerFunctions.current(self)
+    if #(self.stack) > 0 then
+        return self.stack[1]
+    end
+    return nil
 end
 
 -- container returns the StateContainer for this State.

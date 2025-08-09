@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local input = require('openmw.input')
 local settings = require("scripts.ErnOneStick.settings")
 
+local triggerThreshold = 0.3
+
 local KeyFunctions = {}
 KeyFunctions.__index = KeyFunctions
 
@@ -27,6 +29,8 @@ function NewKey(name, eval)
         name = name,
         eval = eval,
         pressed = false,
+        -- analog is a range from 0 to 1 indicating how pressed the key is.
+        analog = 0,
         rise = false,
         fall = false,
     }
@@ -35,11 +39,33 @@ function NewKey(name, eval)
 end
 
 function KeyFunctions.update(self, dt)
+    -- newState is a boolean or float range from 0 to 1.
     local newState = self.eval(dt)
-    if newState ~= self.pressed then
-        settings.debugPrint("key " .. self.name .. ": " .. tostring(self.pressed) .. "->" .. tostring(newState))
-        self.pressed = newState
+    local newBooleanState = false
+    self.analog = 0
+    if type(newState) == "boolean" then
+        newBooleanState = newState
         if newState then
+            self.analog = 1
+        end
+    elseif type(newState) == "number" then
+        self.analog = math.max(0, math.min(1, newState))
+        if newState > (1 - triggerThreshold) then
+            newBooleanState = true
+        elseif newState < triggerThreshold then
+            newBooleanState = false
+        else
+            return
+        end
+    else
+        error("unsupported type for key tracker: " .. type(newState))
+        return
+    end
+
+    if newBooleanState ~= self.pressed then
+        settings.debugPrint("key " .. self.name .. ": " .. tostring(self.pressed) .. "->" .. tostring(newBooleanState))
+        self.pressed = newBooleanState
+        if newBooleanState then
             self.rise = true
             self.fall = false
         else

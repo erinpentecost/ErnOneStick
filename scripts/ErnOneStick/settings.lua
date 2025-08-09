@@ -88,7 +88,12 @@ local function initSettings()
                 min = 0.01,
                 max = 100
             }
-        }, }
+        }, {
+            key = "invertLookVertical",
+            name = "invertLookVertical_name",
+            default = false,
+            renderer = "checkbox"
+        } }
     }
 
     interfaces.Settings.registerGroup {
