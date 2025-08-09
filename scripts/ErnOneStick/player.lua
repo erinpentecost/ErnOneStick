@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local settings = require("scripts.ErnOneStick.settings")
 local state = require("scripts.ErnOneStick.state")
+local radians = require("scripts.ErnOneStick.radians")
 local keytrack = require("scripts.ErnOneStick.keytrack")
 local core = require("openmw.core")
 local pself = require("openmw.self")
@@ -26,6 +27,7 @@ local ui = require('openmw.ui')
 local aux_util = require('openmw_aux.util')
 local input = require('openmw.input')
 local controls = require('openmw.interfaces').Controls
+local cameraInterface = require("openmw.interfaces").Camera
 
 settings.registerPage()
 
@@ -40,16 +42,27 @@ if settings.invertLookVertical then
     invertLook = -1
 end
 
-local function lerpAngle(startAngle, endAngle, t)
-    local diff = (endAngle - startAngle + math.pi) % (2 * math.pi) - math.pi
-    local result = startAngle + diff * t;
-    -- Wrap to -PI to PI
-    return (result + math.pi + 2 * math.pi) % (2 * math.pi) - math.pi
-end
+-- reference: https://openmw.readthedocs.io/en/stable/reference/lua-scripting/openmw_self.html##(ActorControls)
 
 local function setFirstPersonCameraPitch(dt, desired)
-    -- these are in radians!
-    camera.setPitch(lerpAngle(camera.getPitch(), desired, 0.1))
+    -- I was having issues with camera.setPitch() causing the camera to jump around
+    -- after following it up with pitchChange controls, so I dropped it.
+    --camera.setPitch(radians.lerpAngle(camera.getPitch(), desired, 0.1))
+    if radians.anglesAlmostEqual(camera.getPitch(), desired) then
+        return
+    else
+        local swing = radians.subtract(camera.getPitch(), desired) * dt * 3
+        pself.controls.pitchChange = swing
+    end
+end
+
+local function setFirstPersonCameraYaw(dt, desired)
+    if radians.anglesAlmostEqual(camera.getYaw(), desired) then
+        return
+    else
+        local swing = radians.subtract(camera.getYaw(), desired) * dt * 3
+        pself.controls.yawChange = swing
+    end
 end
 
 input.registerAction {
@@ -147,21 +160,32 @@ travelState:set({
 
 freeLookState:set({
     looking = false,
+    initialMode = nil,
+    initialFOV = nil,
     onEnter = function(base)
         settings.debugPrint("enter state: freeLook. " .. aux_util.deepToString(base, 3))
         controls.overrideMovementControls(true)
         -- this is not resetting base.looking
         base.looking = false
+        base.initialMode = camera.getMode()
+        base.initialFOV = camera.getFieldOfView()
+        pself.controls.yawChange = 0
+        pself.controls.pitchChange = 0
     end,
     onFrame = function(base, dt)
-        -- TODO: this onFrame is the stack, not the base.
-
-        -- this state is entered when the lock button is pressed.
-        -- if the d-pad is used during this period, then we stay in this
-        -- state.
-        -- otherwise, we enter lock-on state.
+        -- this state is entered when the lock button is first pressed,
+        -- and ends when the lock button is released.
+        -- if movement buttons are newly pressed while in this state, we
+        -- set "looking" to true and force first-person perspective.
+        -- when we exit this state, if "looking" is true, we go back to travel mode.
+        -- otherwise, we enter lock-on mode.
         if keyLock.fall then
             settings.debugPrint("exiting freeLook. " .. aux_util.deepToString(base, 3))
+            cameraInterface.enableModeControl(settings.MOD_NAME)
+            camera.setMode(base.initialMode, true)
+            camera.setFieldOfView(base.initialFOV)
+            pself.controls.yawChange = 0
+            pself.controls.pitchChange = 0
             if base.looking then
                 stateMachine:replace(travelState)
             else
@@ -169,7 +193,7 @@ freeLookState:set({
             end
             return
         end
-        -- TODO: slow time and increase DOF if looking at this point.
+        -- TODO: slow time?
 
         if keyForward.pressed then
             pself.controls.pitchChange = keyForward.analog * settings.lookSensitivityVertical * (-1 * dt) * invertLook
@@ -189,8 +213,12 @@ freeLookState:set({
 
         -- only count as looking if we newly pressed the key after locking on.
         if keyForward.rise or keyBackward.rise or keyLeft.rise or keyRight.rise then
-            settings.debugPrint("looking")
+            settings.debugPrint("looking. pitch=" ..
+                tostring(camera.getPitch()) .. ", extrapitch=" .. tostring(camera.getExtraPitch()))
             base.looking = true
+            camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
+            camera.setMode(camera.MODE.FirstPerson, true)
+            cameraInterface.disableModeControl(settings.MOD_NAME)
         end
     end
 })

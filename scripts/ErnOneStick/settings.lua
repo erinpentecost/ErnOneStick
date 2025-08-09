@@ -93,6 +93,16 @@ local function initSettings()
             name = "invertLookVertical_name",
             default = false,
             renderer = "checkbox"
+        }, {
+            key = "freeLookZoom",
+            name = "freeLookZoom_name",
+            default = 1.2,
+            renderer = "number",
+            argument = {
+                integer = false,
+                min = 1,
+                max = 10,
+            }
         } }
     }
 
