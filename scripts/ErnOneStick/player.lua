@@ -25,6 +25,7 @@ local camera = require('openmw.camera')
 local localization = core.l10n(settings.MOD_NAME)
 local ui = require('openmw.ui')
 local aux_util = require('openmw_aux.util')
+local async = require("openmw.async")
 local input = require('openmw.input')
 local controls = require('openmw.interfaces').Controls
 local cameraInterface = require("openmw.interfaces").Camera
@@ -89,6 +90,23 @@ end)
 local keyRight = keytrack.NewKey("right", function(dt)
     return input.getRangeActionValue("MoveRight")
 end)
+
+local keySneak = keytrack.NewKey("sneak",
+    function(dt) return input.getBooleanActionValue("Sneak") end)
+
+-- Jump is a trigger, not an action.
+input.registerTriggerHandler("Jump", async:callback(function() pself.controls.jump = true end))
+
+
+-- Have to recreate sneak toggle.
+local sneaking = false
+local function handleSneak(dt)
+    keySneak:update(dt)
+    if keySneak.rise then
+        sneaking = sneaking ~= true
+        pself.controls.sneak = sneaking
+    end
+end
 
 local stateMachine = state.NewStateContainer()
 
@@ -231,6 +249,18 @@ local function onFrame(dt)
     keyBackward:update(dt)
     keyLeft:update(dt)
     keyRight:update(dt)
+    --keyJump:update(dt)
+    --keySneak:update(dt)
+    handleSneak(dt)
+
+
+    --[[
+    if input.actions ~= nil then
+        for k, v in pairs(input.actions) do
+            settings.debugPrint(k .. ": " .. aux_util.deepToString(v, 3))
+        end
+    end
+    ]]
 
     local currentState = stateMachine:current()
     --settings.debugPrint("current state " .. aux_util.deepToString(currentState, 3))
