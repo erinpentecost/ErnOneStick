@@ -17,37 +17,49 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 
 local util = require('openmw.util')
+local pself = require("openmw.self")
 
 TargetCollection = {}
 
-function TargetCollection:new(gameObjects)
+function TargetCollection:new(gameObjects, filterFn)
     local collection = {
         gameObjects = gameObjects,
         sorted = false,
-        currentIdx = 0
+        currentIdx = 0,
+        filterFn = filterFn or function(e) return true end,
     }
     setmetatable(collection, self)
     self.__index = self
     return collection
 end
 
-function TargetCollection:sort(player)
+function TargetCollection:sort()
     -- Objects we are facing are weighted highly.
     -- Objects that are closer are weighted highly.
     if self.sorted then
         return
     end
+
+    -- remove bad objects
+    local filtered = {}
+    for _, e in ipairs(self.gameObjects) do
+        if self.filterFn(e) then
+            table.insert(filtered, e)
+        end
+    end
+    self.gameObjects = filtered
+
     -- could maybe use camera.viewportToWorldVector(0.5, 0.5) instead to get facing.
-    local facing = player.rotation:apply(util.vector3(0.0, 1.0, 0.0)):normalize()
+    local facing = pself.rotation:apply(util.vector3(0.0, 1.0, 0.0)):normalize()
     -- sort by most weight first
     local weight = {}
-    for i, e in ipairs(self.gameObject) do
-        local relativePos = (player.position - e.position)
+    for i, e in ipairs(self.gameObjects) do
+        local relativePos = (pself.position - e.position)
         -- dot product returns 0 if at 90*, 1 if codirectional, -1 if opposite.
         local faceWeight = 100 * (4 + facing:dot(relativePos))
         weight[e.id] = faceWeight / (relativePos:length())
     end
-    table.sort(self.gameObject, function(a, b) return weight[a.id] < weight[b.id] end)
+    table.sort(self.gameObjects, function(a, b) return weight[a.id] < weight[b.id] end)
     self.sorted = true
 end
 
@@ -57,9 +69,17 @@ function TargetCollection:next()
         return nil
     end
     self.currentIdx = self.currentIdx + 1
+
     if self.currentIdx > #(self.gameObjects) then
         self.currentIdx = 1
     end
+
+    -- make sure object is still ok.
+    if self.filterFn(self.gameObjects[self.currentIdx]) ~= true then
+        table.remove(self.gameObjects, self.currentIdx)
+        return self:next()
+    end
+    return self.gameObjects[self.currentIdx]
 end
 
 function TargetCollection:previous()
@@ -71,6 +91,13 @@ function TargetCollection:previous()
     if self.currentIdx <= 0 then
         self.currentIdx = #(self.gameObjects)
     end
+
+    -- make sure object is still ok.
+    if self.filterFn(self.gameObjects[self.currentIdx]) ~= true then
+        table.remove(self.gameObjects, self.currentIdx)
+        return self:previous()
+    end
+    return self.gameObjects[self.currentIdx]
 end
 
 return {

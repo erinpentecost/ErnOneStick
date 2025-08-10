@@ -19,16 +19,19 @@ local settings = require("scripts.ErnOneStick.settings")
 local state = require("scripts.ErnOneStick.state")
 local radians = require("scripts.ErnOneStick.radians")
 local keytrack = require("scripts.ErnOneStick.keytrack")
+local targets = require("scripts.ErnOneStick.targets")
 local core = require("openmw.core")
 local pself = require("openmw.self")
 local camera = require('openmw.camera')
 local localization = core.l10n(settings.MOD_NAME)
 local ui = require('openmw.ui')
+local util = require('openmw.util')
 local aux_util = require('openmw_aux.util')
 local async = require("openmw.async")
 local types = require('openmw.types')
 local input = require('openmw.input')
 local controls = require('openmw.interfaces').Controls
+local nearby = require('openmw.nearby')
 local cameraInterface = require("openmw.interfaces").Camera
 
 settings.registerPage()
@@ -128,18 +131,108 @@ local freeLookState = state.NewState()
 
 lockSelectionState:set({
     name = "lockSelectionState",
-    onEnter = function()
+    currentTarget = nil,
+    actors = {},
+    others = {},
+    onEnter = function(base)
         settings.debugPrint("enter state: lockselection")
         pself.controls.movement = 0
         core.sendGlobalEvent(settings.MOD_NAME .. "onPause")
         camera.setMode(camera.MODE.FirstPerson, true)
+
+        local playerHead = pself:getBoundingBox().center + util.vector3(0, 0, pself:getBoundingBox().halfSize.z)
+
+        base.actors = targets.TargetCollection:new(nearby.actors,
+            function(e)
+                if e:isValid() == false then
+                    return false
+                end
+                if types.Actor.isDead(e) then
+                    return false
+                end
+                local center = e:getBoundingBox().center
+                local castResult = nearby.castRay(playerHead, center, {
+                    collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+                    ignore = pself
+                })
+                return (castResult.hitObject ~= nil) and (castResult.hitObject.id == e.id)
+            end)
+
+        local others = {}
+        for _, e in ipairs(nearby.activators) do
+            table.insert(others, e)
+        end
+        for _, e in ipairs(nearby.actors) do
+            table.insert(others, e)
+        end
+        for _, e in ipairs(nearby.items) do
+            table.insert(others, e)
+        end
+        for _, e in ipairs(nearby.doors) do
+            table.insert(others, e)
+        end
+
+        base.others = targets.TargetCollection:new(others,
+            function(e)
+                if e:isValid() == false then
+                    return false
+                end
+                -- only dead actors allowed
+                if e.type == types.Actor and (types.Actor.isDead(e) == false) then
+                    return false
+                end
+                local center = e:getBoundingBox().center
+                local castResult = nearby.castRay(playerHead, center, {
+                    collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+                    ignore = pself
+                })
+                return (castResult.hitObject ~= nil) and (castResult.hitObject.id == e.id)
+            end)
+
+        base.currentTarget = base.actors:next()
+        if base.currentTarget == nil then
+            base.currentTarget = base.others:next()
+        end
+        if base.currentTarget == nil then
+            settings.debugPrint("no valid targets!")
+        end
     end,
-    onFrame = function(s, dt)
+    onExit = function(base)
+        core.sendGlobalEvent(settings.MOD_NAME .. "onUnpause")
+    end,
+    onFrame = function(base, dt)
         if keyLock.rise then
-            print("lock state: lock")
-            stateMachine:replace(travelState)
-            core.sendGlobalEvent(settings.MOD_NAME .. "onUnpause")
+            if base.currentTarget then
+                -- we selected a target
+                print("Locking onto " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ")!")
+                -- TODO: enter locked state
+                stateMachine:replace(travelState)
+            else
+                -- no target, so move to travel state.
+                stateMachine:replace(travelState)
+            end
             return
+        end
+
+        local newTarget = function(new)
+            if (new ~= nil) and (new ~= base.currentTarget) then
+                -- target changed
+                base.currentTarget = new
+                print("Looking at " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
+            end
+        end
+
+        -- up/down cycles actors
+        -- left/right cycles everything else
+        if keyForward.rise then
+            newTarget(base.actors:next())
+        elseif keyBackward.rise then
+            newTarget(base.actors:previous())
+        end
+        if keyLeft.rise then
+            newTarget(base.others:previous())
+        elseif keyRight.rise then
+            newTarget(base.others:next())
         end
     end
 })
