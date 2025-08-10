@@ -1,14 +1,10 @@
+local util = require('openmw.util')
+
 local two_pi = 2 * math.pi
 local eps = 1e-12
 
 local function normalize(angle)
-    -- normalize into [-pi, pi)
-    local a = (angle + math.pi) % two_pi - math.pi
-    -- canonicalize -pi -> +pi so we use (-pi, pi]
-    if math.abs(a + math.pi) < eps then
-        return math.pi
-    end
-    return a
+    return util.normalizeAngle(angle)
 end
 
 local function angleDiff(a, b)

@@ -50,12 +50,19 @@ if settings.invertLookVertical then
     invertLook = -1
 end
 
+local onGround = types.Actor.isOnGround(pself)
+
 -- reference: https://openmw.readthedocs.io/en/stable/reference/lua-scripting/openmw_self.html##(ActorControls)
 
-local function setFirstPersonCameraPitch(dt, desired)
+-- my problem is that my character is not facing the same direction as the camera.
+-- i'd prefer to not control the camera separately....
+
+local function setFirstPersonCameraPitch(desired, dt)
     -- I was having issues with camera.setPitch() causing the camera to jump around
     -- after following it up with pitchChange controls, so I dropped it.
     --camera.setPitch(radians.lerpAngle(camera.getPitch(), desired, 0.1))
+
+    -- this implementation is awful because it could rubber bound around the desired point.
     if radians.anglesAlmostEqual(camera.getPitch(), desired) then
         return
     else
@@ -64,7 +71,7 @@ local function setFirstPersonCameraPitch(dt, desired)
     end
 end
 
-local function setFirstPersonCameraYaw(dt, desired)
+local function setFirstPersonCameraYaw(desired, dt)
     if radians.anglesAlmostEqual(camera.getYaw(), desired) then
         return
     else
@@ -73,20 +80,63 @@ local function setFirstPersonCameraYaw(dt, desired)
     end
 end
 
-local function lookAt(dt, desired)
-    local direction = ((desired:getBoundingBox().center + util.vector3(0, 0, (desired:getBoundingBox().halfSize.z) / 2)) - camera.getPosition())
-        :normalize()
-    -- from DynamicCamera
-    local targetYaw = math.atan(direction.x, direction.y)
-    local targetPitch = math.max(-1.57, math.min(1.57, -math.asin(direction.z)))
+local function resetCamera()
+    camera.setYaw(pself.rotation:getYaw())
+    camera.setPitch(pself.rotation:getPitch())
+end
 
-    --settings.debugPrint("yaw: " .. targetYaw .. ", pitch: " .. targetPitch)
-    --setFirstPersonCameraPitch(dt, targetPitch)
-    --setFirstPersonCameraYaw(dt, targetYaw)
+local function look(worldVector, dt)
+    --local direction = (worldVector - camera.getPosition()):normalize()
+    local direction = (worldVector - camera.getPosition()):normalize()
+    -- from DynamicCamera
+
+    local targetYaw = radians.normalize(math.atan(direction.x, direction.y))
+    local targetPitch = radians.normalize(math.max(-1.57, math.min(1.57, -math.asin(direction.z))))
+
+
+
+
+    -- Force camera into position an/d override input controls this frame
     camera.setYaw(targetYaw)
-    --pself.controls.yawChange = 0
+    --setFirstPersonCameraYaw(targetYaw, dt)
+    --pself.controls.yawChange = targetYaw - pself.rotation:getYaw()
     camera.setPitch(targetPitch)
-    --pself.controls.pitchChange = 0
+    --setFirstPersonCameraPitch(targetPitch, dt)
+    --
+
+    -- actually rotate the player so they are facing that direction
+    --[[local trans = util.transform
+    core.sendGlobalEvent(settings.MOD_NAME .. "onRotate", {
+        object = pself,
+        rotation = trans.rotateX(targetPitch) * trans.rotateX(targetYaw)
+    })
+    --[[
+    settings.debugPrint(aux_util.deepToString(camera.rotation, 3))]]
+
+    -- Force pself rotation to match camera.
+    --pself.position = camera.getViewTransform():apply(pself.position)
+
+
+    --local localDesiredPoint = camera.worldToViewportVector(desiredPoint)
+    settings.debugPrint("Pitch/Yaw: target(" ..
+        string.format("%.3f", targetYaw) ..
+        "/" .. string.format("%.3f", targetPitch) ..
+        ") actual(" ..
+        string.format("%.3f", camera.getYaw()) .. "/" .. string.format("%.3f", camera.getPitch()) ..
+        ") self(" ..
+        string.format("%.3f", pself.rotation:getYaw()) .. "/" .. string.format("%.3f", pself.rotation:getPitch()) ..
+        ")")
+end
+
+local function look2(worldVector, dt)
+    -- seems like we need to do BOTH camera.setYaw and pself.controls.pitchChange
+    local direction = (worldVector - pself.position):normalize()
+    local targetYaw = math.atan(direction.x, direction.y)
+    local targetPitch = radians.normalize(-math.asin(direction.z))
+    camera.setYaw(targetYaw)
+    --camera.setPitch(targetPitch)
+    --pself.controls.yawChange = radians.normalize(targetYaw) - pself.rotation:getYaw()
+    --pself.controls.pitchChange = radians.normalize(targetPitch) - pself.rotation:getPitch()
 end
 
 input.registerAction {
@@ -153,6 +203,9 @@ lockSelectionState:set({
     onEnter = function(base)
         settings.debugPrint("enter state: lockselection")
         pself.controls.movement = 0
+        pself.controls.yawChange = 0
+        pself.controls.pitchChange = 0
+        resetCamera()
         core.sendGlobalEvent(settings.MOD_NAME .. "onPause")
         camera.setMode(camera.MODE.FirstPerson, true)
 
@@ -225,6 +278,7 @@ lockSelectionState:set({
         core.sendGlobalEvent(settings.MOD_NAME .. "onUnpause")
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
+        resetCamera()
     end,
     onFrame = function(base, dt)
         if keyLock.rise then
@@ -262,7 +316,7 @@ lockSelectionState:set({
         end
 
         if base.currentTarget ~= nil then
-            lookAt(dt, base.currentTarget)
+            look(base.currentTarget:getBoundingBox().center, dt)
         end
     end
 })
@@ -287,8 +341,8 @@ travelState:set({
         -- Reset camera to foward if we are on the ground.
         -- Don't do this when swimming or levitating so the player
         -- can point up or down.
-        if types.Actor.isOnGround(pself) then
-            setFirstPersonCameraPitch(dt, 0)
+        if onGround then
+            setFirstPersonCameraPitch(0, dt)
         end
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
@@ -335,6 +389,8 @@ freeLookState:set({
         base.initialFOV = camera.getFieldOfView()
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
+
+        resetCamera()
 
         camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
         camera.setMode(camera.MODE.FirstPerson, true)
@@ -400,8 +456,14 @@ local function onFrame(dt)
     currentState.onFrame(currentState, dt)
 end
 
+local function onUpdate(dt)
+    if dt == 0 then return end
+    onGround = types.Actor.isOnGround(pself)
+end
+
 return {
     engineHandlers = {
-        onFrame = onFrame
+        onFrame = onFrame,
+        onUpdate = onUpdate
     }
 }

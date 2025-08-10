@@ -26,16 +26,23 @@ end
 settings.initSettings()
 
 local function onPause()
-    world.pause(settings.MOD_NAME)
+    world.setSimulationTimeScale(0.1)
+    --world.pause(settings.MOD_NAME)
 end
 
 local function onUnpause()
-    world.unpause(settings.MOD_NAME)
+    world.setSimulationTimeScale(1)
+    --world.unpause(settings.MOD_NAME)
+end
+
+local function onRotate(data)
+    data.object:teleport(data.object.cell, data.object.position, data.rotation)
 end
 
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "onPause"] = onPause,
         [settings.MOD_NAME .. "onUnpause"] = onUnpause,
+        [settings.MOD_NAME .. "onRotate"] = onRotate,
     }
 }
