@@ -151,11 +151,15 @@ lockSelectionState:set({
                     return false
                 end
                 local center = e:getBoundingBox().center
-                local castResult = nearby.castRay(playerHead, center, {
+                local castResult = nearby.castRay(center, playerHead, {
                     collisionType = nearby.COLLISION_TYPE.AnyPhysical,
-                    ignore = pself
+                    ignore = e
                 })
-                return (castResult.hitObject ~= nil) and (castResult.hitObject.id == e.id)
+                --[[settings.debugPrint("raycast from " ..
+                    aux_util.deepToString(playerHead, 3) ..
+                    " to " ..
+                    aux_util.deepToString(center, 3) .. ": hit " .. aux_util.deepToString(castResult.hitObject, 3))]]
+                return (castResult.hitObject ~= nil) and (castResult.hitObject.id == pself.id)
             end)
 
         local others = {}
@@ -182,11 +186,15 @@ lockSelectionState:set({
                     return false
                 end
                 local center = e:getBoundingBox().center
-                local castResult = nearby.castRay(playerHead, center, {
+                local castResult = nearby.castRay(center, playerHead, {
                     collisionType = nearby.COLLISION_TYPE.AnyPhysical,
-                    ignore = pself
+                    ignore = e
                 })
-                return (castResult.hitObject ~= nil) and (castResult.hitObject.id == e.id)
+                --[[settings.debugPrint("raycast from " ..
+                    aux_util.deepToString(playerHead, 3) ..
+                    " to " ..
+                    aux_util.deepToString(center, 3) .. ": hit " .. aux_util.deepToString(castResult.hitObject, 3))]]
+                return (castResult.hitObject ~= nil) and (castResult.hitObject.id == pself.id)
             end)
 
         base.currentTarget = base.actors:next()

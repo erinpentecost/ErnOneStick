@@ -40,12 +40,10 @@ function TargetCollection:sort()
         return
     end
 
-    -- remove bad objects
+    -- cast to list. delay filtering
     local filtered = {}
     for _, e in ipairs(self.gameObjects) do
-        if self.filterFn(e) then
-            table.insert(filtered, e)
-        end
+        table.insert(filtered, e)
     end
     self.gameObjects = filtered
 
