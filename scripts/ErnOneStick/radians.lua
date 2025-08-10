@@ -17,7 +17,7 @@ local function subtract(a, b)
         -- tie (exact half-turn): choose the positive rotation (+pi)
         diff = math.pi
     end
-    return diff
+    return util.normalizeAngle(diff)
 end
 
 local function anglesAlmostEqual(a, b, tol)

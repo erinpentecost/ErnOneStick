@@ -85,13 +85,8 @@ local function resetCamera()
     camera.setPitch(pself.rotation:getPitch())
 end
 
-local function track(worldVector, dt)
+local function targetAngles(worldVector, t)
     -- This swings the viewport toward worldVector
-    --
-end
-
-local function look(worldVector, t)
-    -- This is instant and works during pause.
     if t == nil then
         t = 1
     end
@@ -104,7 +99,31 @@ local function look(worldVector, t)
     targetYaw = radians.lerpAngle(pself.rotation:getYaw(), targetYaw, t)
     targetPitch = radians.lerpAngle(pself.rotation:getPitch(), targetPitch, t)
 
-    if radians.anglesAlmostEqual(pself.rotation:getYaw(), targetYaw) and radians.anglesAlmostEqual(pself.rotation:getPitch(), targetPitch) then
+    return {
+        yaw = targetYaw,
+        pitch = targetPitch
+    }
+end
+
+local function trackPitch(targetPitch, t)
+    if t == nil then
+        t = 1
+    end
+    targetPitch = radians.lerpAngle(pself.rotation:getPitch(), targetPitch, t)
+
+    if radians.anglesAlmostEqual(pself.rotation:getPitch(), targetPitch) then
+        return
+    end
+
+    camera.setPitch(targetPitch)
+    pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), targetPitch)
+end
+
+local function look(worldVector, t)
+    -- This is instant and works during pause.
+    local angles = targetAngles(worldVector, t)
+
+    if radians.anglesAlmostEqual(pself.rotation:getYaw(), angles.yaw) and radians.anglesAlmostEqual(pself.rotation:getPitch(), angles.pitch) then
         return
     end
 
@@ -113,7 +132,7 @@ local function look(worldVector, t)
     local trans = util.transform
     core.sendGlobalEvent(settings.MOD_NAME .. "onRotate", {
         object = pself,
-        rotation = trans.rotateZ(targetYaw) * trans.rotateX(targetPitch)
+        rotation = trans.rotateZ(angles.yaw) * trans.rotateX(angles.pitch)
     })
 
     -- this all matches
@@ -336,7 +355,7 @@ travelState:set({
         -- Don't do this when swimming or levitating so the player
         -- can point up or down.
         if onGround then
-            setFirstPersonCameraPitch(0, dt)
+            trackPitch(0, 0.1)
         end
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
