@@ -73,6 +73,22 @@ local function setFirstPersonCameraYaw(dt, desired)
     end
 end
 
+local function lookAt(dt, desired)
+    local direction = ((desired:getBoundingBox().center + util.vector3(0, 0, (desired:getBoundingBox().halfSize.z) / 2)) - camera.getPosition())
+        :normalize()
+    -- from DynamicCamera
+    local targetYaw = math.atan(direction.x, direction.y)
+    local targetPitch = math.max(-1.57, math.min(1.57, -math.asin(direction.z)))
+
+    --settings.debugPrint("yaw: " .. targetYaw .. ", pitch: " .. targetPitch)
+    --setFirstPersonCameraPitch(dt, targetPitch)
+    --setFirstPersonCameraYaw(dt, targetYaw)
+    camera.setYaw(targetYaw)
+    --pself.controls.yawChange = 0
+    camera.setPitch(targetPitch)
+    --pself.controls.pitchChange = 0
+end
+
 input.registerAction {
     key = settings.MOD_NAME .. "LockButton",
     type = input.ACTION_TYPE.Boolean,
@@ -207,6 +223,8 @@ lockSelectionState:set({
     end,
     onExit = function(base)
         core.sendGlobalEvent(settings.MOD_NAME .. "onUnpause")
+        pself.controls.yawChange = 0
+        pself.controls.pitchChange = 0
     end,
     onFrame = function(base, dt)
         if keyLock.rise then
@@ -241,6 +259,10 @@ lockSelectionState:set({
             newTarget(base.others:previous())
         elseif keyRight.rise then
             newTarget(base.others:next())
+        end
+
+        if base.currentTarget ~= nil then
+            lookAt(dt, base.currentTarget)
         end
     end
 })
