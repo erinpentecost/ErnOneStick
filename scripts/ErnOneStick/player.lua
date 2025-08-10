@@ -135,6 +135,19 @@ local function look(worldVector, t)
         ")")]]
 end
 
+local reach = 0
+local handleReach = function()
+    -- magnitude of telekinesis is in feet
+    -- need "Constants::UnitsPerFoot" =  21.33333333f
+    -- normal reach is gmst: iMaxActivateDist, which is in game units
+    local dist = core.getGMST("iMaxActivateDist")
+    local telekinesisEffect = types.Actor.activeEffects(pself):getEffect(core.magic.EFFECT_TYPE.Telekinesis)
+    if telekinesisEffect ~= nil then
+        dist = dist + telekinesisEffect.magnitude * 21.33333333
+    end
+    reach = dist
+end
+
 
 input.registerAction {
     key = settings.MOD_NAME .. "LockButton",
@@ -274,14 +287,18 @@ lockSelectionState:set({
                     return false
                 end
                 local center = e:getBoundingBox().center
+                if (playerHead - center):length() > math.max(reach, 1000) then
+                    -- this is longer than reach because of ranged weapons and spears, etc.
+                    return false
+                end
                 local castResult = nearby.castRay(center, playerHead, {
-                    collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+                    collisionType = nearby.COLLISION_TYPE.Default,
                     ignore = e
                 })
-                --[[settings.debugPrint("raycast from " ..
+                settings.debugPrint("raycast from " ..
                     aux_util.deepToString(playerHead, 3) ..
                     " to " ..
-                    aux_util.deepToString(center, 3) .. ": hit " .. aux_util.deepToString(castResult.hitObject, 3))]]
+                    aux_util.deepToString(center, 3) .. ": hit " .. aux_util.deepToString(castResult.hitObject, 3))
                 return (castResult.hitObject ~= nil) and (castResult.hitObject.id == pself.id)
             end)
 
@@ -298,6 +315,9 @@ lockSelectionState:set({
         for _, e in ipairs(nearby.doors) do
             table.insert(others, e)
         end
+        for _, e in ipairs(nearby.containers) do
+            table.insert(others, e)
+        end
 
         base.others = targets.TargetCollection:new(others,
             function(e)
@@ -309,12 +329,13 @@ lockSelectionState:set({
                     return false
                 end
                 local center = e:getBoundingBox().center
-                if (playerHead - center):length() > 500 then
-                    -- TODO: increase when we have Telekinesis
+                if (playerHead - center):length() > reach then
                     return false
                 end
+                -- should add anything that the item intersects with to the
+                -- ignore list. items clip into tables and weapon racks.
                 local castResult = nearby.castRay(center, playerHead, {
-                    collisionType = nearby.COLLISION_TYPE.AnyPhysical,
+                    collisionType = nearby.COLLISION_TYPE.Default,
                     ignore = e
                 })
                 --[[settings.debugPrint("raycast from " ..
@@ -520,6 +541,7 @@ local function onFrame(dt)
     --keyJump:update(dt)
     --keySneak:update(dt)
     handleSneak(dt)
+    handleReach()
 
 
     --[[
