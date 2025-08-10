@@ -26,6 +26,7 @@ local localization = core.l10n(settings.MOD_NAME)
 local ui = require('openmw.ui')
 local aux_util = require('openmw_aux.util')
 local async = require("openmw.async")
+local types = require('openmw.types')
 local input = require('openmw.input')
 local controls = require('openmw.interfaces').Controls
 local cameraInterface = require("openmw.interfaces").Camera
@@ -36,6 +37,9 @@ if settings.disable() then
     print(settings.MOD_NAME .. " is disabled.")
     return
 end
+
+controls.overrideMovementControls(true)
+cameraInterface.disableModeControl(settings.MOD_NAME)
 
 local runThreshold = 0.9
 local invertLook = 1
@@ -111,25 +115,24 @@ end
 local stateMachine = state.NewStateContainer()
 
 local normalState = state.NewState({
-    onEnter = function()
-        settings.debugPrint("enter state: normal")
-        controls.overrideMovementControls(false)
-    end,
+    name = "normalState",
     onFrame = function(dt) end
 })
 
 stateMachine:push(normalState)
 
-local lockState = state.NewState()
+local lockSelectionState = state.NewState()
 local travelState = state.NewState()
+local preliminaryFreeLookState = state.NewState()
 local freeLookState = state.NewState()
 
-lockState:set({
+lockSelectionState:set({
+    name = "lockSelectionState",
     onEnter = function()
-        settings.debugPrint("enter state: lock")
-        controls.overrideMovementControls(true)
+        settings.debugPrint("enter state: lockselection")
         pself.controls.movement = 0
         core.sendGlobalEvent(settings.MOD_NAME .. "onPause")
+        camera.setMode(camera.MODE.FirstPerson, true)
     end,
     onFrame = function(s, dt)
         if keyLock.rise then
@@ -142,20 +145,28 @@ lockState:set({
 })
 
 travelState:set({
+    name = "travelState",
     onEnter = function(base)
         settings.debugPrint("enter state: travel")
-        controls.overrideMovementControls(true)
+        camera.setMode(camera.MODE.FirstPerson, true)
+    end,
+    onExit = function(base)
+        pself.controls.movement = 0
+        pself.controls.run = false
+        pself.controls.yawChange = 0
     end,
     onFrame = function(s, dt)
         if keyLock.rise then
             print("travel state: lock started")
-            pself.controls.movement = 0
-            pself.controls.run = false
-            pself.controls.yawChange = 0
-            stateMachine:replace(freeLookState)
+            stateMachine:replace(preliminaryFreeLookState)
             return
         end
-        setFirstPersonCameraPitch(dt, 0)
+        -- Reset camera to foward if we are on the ground.
+        -- Don't do this when swimming or levitating so the player
+        -- can point up or down.
+        if types.Actor.isOnGround(pself) then
+            setFirstPersonCameraPitch(dt, 0)
+        end
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
             pself.controls.run = keyForward.analog > runThreshold
@@ -176,17 +187,38 @@ travelState:set({
     end
 })
 
+preliminaryFreeLookState:set({
+    name = "preliminaryFreeLookState",
+    onFrame = function(base, dt)
+        -- we released the lock button
+        if keyLock.fall then
+            stateMachine:replace(lockSelectionState)
+        end
+        -- we started looking around
+        if (keyForward.rise or keyBackward.rise or keyLeft.rise or keyRight.rise) then
+            stateMachine:replace(freeLookState)
+        end
+    end
+})
+
 freeLookState:set({
-    looking = false,
+    name = "freeLookState",
     initialMode = nil,
     initialFOV = nil,
     onEnter = function(base)
         settings.debugPrint("enter state: freeLook. " .. aux_util.deepToString(base, 3))
-        controls.overrideMovementControls(true)
         -- this is not resetting base.looking
-        base.looking = false
         base.initialMode = camera.getMode()
         base.initialFOV = camera.getFieldOfView()
+        pself.controls.yawChange = 0
+        pself.controls.pitchChange = 0
+
+        camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
+        camera.setMode(camera.MODE.FirstPerson, true)
+    end,
+    onExit = function(base)
+        camera.setMode(base.initialMode, true)
+        camera.setFieldOfView(base.initialFOV)
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
     end,
@@ -198,20 +230,9 @@ freeLookState:set({
         -- when we exit this state, if "looking" is true, we go back to travel mode.
         -- otherwise, we enter lock-on mode.
         if keyLock.fall then
-            settings.debugPrint("exiting freeLook. " .. aux_util.deepToString(base, 3))
-            cameraInterface.enableModeControl(settings.MOD_NAME)
-            camera.setMode(base.initialMode, true)
-            camera.setFieldOfView(base.initialFOV)
-            pself.controls.yawChange = 0
-            pself.controls.pitchChange = 0
-            if base.looking then
-                stateMachine:replace(travelState)
-            else
-                stateMachine:replace(lockState)
-            end
+            stateMachine:replace(travelState)
             return
         end
-        -- TODO: slow time?
 
         if keyForward.pressed then
             pself.controls.pitchChange = keyForward.analog * settings.lookSensitivityVertical * (-1 * dt) * invertLook
@@ -220,23 +241,12 @@ freeLookState:set({
         else
             pself.controls.pitchChange = 0
         end
-        -- TODO: left/right in this mode causes the camera pitch to jump
         if keyLeft.pressed then
             pself.controls.yawChange = keyLeft.analog * settings.lookSensitivityHorizontal * (-1 * dt)
         elseif keyRight.pressed then
             pself.controls.yawChange = keyRight.analog * settings.lookSensitivityHorizontal * dt
         else
             pself.controls.yawChange = 0
-        end
-
-        -- only count as looking if we newly pressed the key after locking on.
-        if keyForward.rise or keyBackward.rise or keyLeft.rise or keyRight.rise then
-            settings.debugPrint("looking. pitch=" ..
-                tostring(camera.getPitch()) .. ", extrapitch=" .. tostring(camera.getExtraPitch()))
-            base.looking = true
-            camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
-            camera.setMode(camera.MODE.FirstPerson, true)
-            cameraInterface.disableModeControl(settings.MOD_NAME)
         end
     end
 })

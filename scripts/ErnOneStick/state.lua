@@ -15,7 +15,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-
+local settings = require("scripts.ErnOneStick.settings")
 -- Ref: https://www.lua.org/pil/16.html
 
 local StateContainerFunctions = {}
@@ -101,27 +101,41 @@ function StateContainerFunctions.push(self, state)
 
     table.insert(self.stack, 1, state)
 
+    if state.name ~= nil then
+        settings.debugPrint("enter state: " .. tostring(state.name))
+    end
     if state.onEnter ~= nil then
         state.onEnter(state.base)
     end
 end
 
-function StateContainerFunctions.pop(self)
+function StateContainerFunctions.pop(self, skipOnEnter)
     --print("pop old state")
     if #(self.stack) > 0 then
-        return table.remove(self.stack, 1)
+        local state = table.remove(self.stack, 1)
+        if state.name ~= nil then
+            settings.debugPrint("exit state: " .. tostring(state.name))
+        end
+        if state.onExit ~= nil then
+            state.onExit(state.base)
+        end
+        return state
     end
-    if #(self.stack) > 0 then
-        self.stack[1].onEnter()
+    if skipOnEnter == true then
+        if #(self.stack) > 0 then
+            local next = self.stack[1]
+            if next.name ~= nil then
+                settings.debugPrint("enter state: " .. tostring(next.name))
+            end
+            next.onEnter(next.base)
+        end
     end
 end
 
 function StateContainerFunctions.replace(self, state)
-    --print("replace state")
+    local popped = StateContainerFunctions.pop(self, true)
     StateContainerFunctions.push(self, state)
-    if #(self.stack) > 1 then
-        return table.remove(self.stack, 2)
-    end
+    return popped
 end
 
 function StateContainerFunctions.current(self)
