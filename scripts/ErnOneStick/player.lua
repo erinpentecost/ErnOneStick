@@ -85,15 +85,28 @@ local function resetCamera()
     camera.setPitch(pself.rotation:getPitch())
 end
 
-local function look(worldVector, dt)
-    local playerBox = pself:getBoundingBox().center + util.vector3(0, 0, pself:getBoundingBox().halfSize.z)
-    local playerHead = camera.getPosition()
-    settings.debugPrint(tostring(playerBox) .. "   " .. tostring(playerHead))
+local function track(worldVector, dt)
+    -- This swings the viewport toward worldVector
+    --
+end
 
-    local direction = (worldVector - pself.position):normalize()
+local function look(worldVector, t)
+    -- This is instant and works during pause.
+    if t == nil then
+        t = 1
+    end
 
-    local targetYaw = util.normalizeAngle(math.atan(direction.x, direction.y))
+    local direction = (worldVector - camera.getPosition()):normalize()
+    -- Two-variable atan2 is not available here!
+    local targetYaw = util.normalizeAngle(math.atan2(direction.x, direction.y))
     local targetPitch = util.normalizeAngle(-math.asin(direction.z))
+
+    targetYaw = radians.lerpAngle(pself.rotation:getYaw(), targetYaw, t)
+    targetPitch = radians.lerpAngle(pself.rotation:getPitch(), targetPitch, t)
+
+    if radians.anglesAlmostEqual(pself.rotation:getYaw(), targetYaw) and radians.anglesAlmostEqual(pself.rotation:getPitch(), targetPitch) then
+        return
+    end
 
     -- Actually rotate the player so they are facing that direction.
     -- This will also change the camera to match.
@@ -103,7 +116,8 @@ local function look(worldVector, dt)
         rotation = trans.rotateZ(targetYaw) * trans.rotateX(targetPitch)
     })
 
-    --[[settings.debugPrint("Pitch/Yaw: target(" ..
+    -- this all matches
+    --[[settings.debugPrint("Yaw/Pitch: target(" ..
         string.format("%.3f", targetYaw) ..
         "/" .. string.format("%.3f", targetPitch) ..
         ") actual(" ..
@@ -113,16 +127,6 @@ local function look(worldVector, dt)
         ")")]]
 end
 
-local function look2(worldVector, dt)
-    -- seems like we need to do BOTH camera.setYaw and pself.controls.pitchChange
-    local direction = (worldVector - pself.position):normalize()
-    local targetYaw = math.atan(direction.x, direction.y)
-    local targetPitch = util.normalizeAngle(-math.asin(direction.z))
-    camera.setYaw(targetYaw)
-    --camera.setPitch(targetPitch)
-    --pself.controls.yawChange = util.normalizeAngle(targetYaw) - pself.rotation:getYaw()
-    --pself.controls.pitchChange = util.normalizeAngle(targetPitch) - pself.rotation:getPitch()
-end
 
 input.registerAction {
     key = settings.MOD_NAME .. "LockButton",
@@ -195,6 +199,7 @@ lockSelectionState:set({
         camera.setMode(camera.MODE.FirstPerson, true)
 
         local playerHead = pself:getBoundingBox().center + util.vector3(0, 0, pself:getBoundingBox().halfSize.z)
+        --local playerHead = camera.getPosition()
 
         base.actors = targets.TargetCollection:new(nearby.actors,
             function(e)
@@ -240,6 +245,10 @@ lockSelectionState:set({
                     return false
                 end
                 local center = e:getBoundingBox().center
+                if (playerHead - center):length() > 500 then
+                    -- TODO: increase when we have Telekinesis
+                    return false
+                end
                 local castResult = nearby.castRay(center, playerHead, {
                     collisionType = nearby.COLLISION_TYPE.AnyPhysical,
                     ignore = e
@@ -301,7 +310,7 @@ lockSelectionState:set({
         end
 
         if base.currentTarget ~= nil then
-            look(base.currentTarget:getBoundingBox().center, dt)
+            look(base.currentTarget:getBoundingBox().center, 0.3)
         end
     end
 })
