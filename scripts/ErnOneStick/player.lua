@@ -97,21 +97,18 @@ local function look(worldVector, dt)
 
 
     -- Force camera into position an/d override input controls this frame
-    camera.setYaw(targetYaw)
-    --setFirstPersonCameraYaw(targetYaw, dt)
-    --pself.controls.yawChange = targetYaw - pself.rotation:getYaw()
-    camera.setPitch(targetPitch)
-    --setFirstPersonCameraPitch(targetPitch, dt)
+    --camera.setYaw(targetYaw)
+    --camera.setPitch(targetPitch)
     --
 
     -- actually rotate the player so they are facing that direction
-    --[[local trans = util.transform
+    local trans = util.transform
     core.sendGlobalEvent(settings.MOD_NAME .. "onRotate", {
         object = pself,
-        rotation = trans.rotateX(targetPitch) * trans.rotateX(targetYaw)
+        rotation = trans.rotateZ(targetYaw) * trans.rotateX(targetPitch)
     })
-    --[[
-    settings.debugPrint(aux_util.deepToString(camera.rotation, 3))]]
+
+    --settings.debugPrint(aux_util.deepToString(camera.rotation, 3))]]
 
     -- Force pself rotation to match camera.
     --pself.position = camera.getViewTransform():apply(pself.position)
