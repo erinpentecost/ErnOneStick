@@ -54,32 +54,6 @@ local onGround = types.Actor.isOnGround(pself)
 
 -- reference: https://openmw.readthedocs.io/en/stable/reference/lua-scripting/openmw_self.html##(ActorControls)
 
--- my problem is that my character is not facing the same direction as the camera.
--- i'd prefer to not control the camera separately....
-
-local function setFirstPersonCameraPitch(desired, dt)
-    -- I was having issues with camera.setPitch() causing the camera to jump around
-    -- after following it up with pitchChange controls, so I dropped it.
-    --camera.setPitch(radians.lerpAngle(camera.getPitch(), desired, 0.1))
-
-    -- this implementation is awful because it could rubber bound around the desired point.
-    if radians.anglesAlmostEqual(camera.getPitch(), desired) then
-        return
-    else
-        local swing = radians.subtract(camera.getPitch(), desired) * dt * 3
-        pself.controls.pitchChange = swing
-    end
-end
-
-local function setFirstPersonCameraYaw(desired, dt)
-    if radians.anglesAlmostEqual(camera.getYaw(), desired) then
-        return
-    else
-        local swing = radians.subtract(camera.getYaw(), desired) * dt * 3
-        pself.controls.yawChange = swing
-    end
-end
-
 local function resetCamera()
     camera.setYaw(pself.rotation:getYaw())
     camera.setPitch(pself.rotation:getPitch())
@@ -117,6 +91,20 @@ local function trackPitch(targetPitch, t)
 
     camera.setPitch(targetPitch)
     pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), targetPitch)
+end
+
+local function track(worldVector, t)
+    local angles = targetAngles(worldVector, t)
+
+    if radians.anglesAlmostEqual(pself.rotation:getYaw(), angles.yaw) and radians.anglesAlmostEqual(pself.rotation:getPitch(), angles.pitch) then
+        return
+    end
+
+    camera.setPitch(angles.pitch)
+    pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), angles.pitch)
+
+    camera.setYaw(angles.yaw)
+    pself.controls.yawChange = radians.subtract(pself.rotation:getYaw(), angles.yaw)
 end
 
 local function look(worldVector, t)
@@ -199,12 +187,52 @@ local normalState = state.NewState({
 stateMachine:push(normalState)
 
 local lockSelectionState = state.NewState()
+local lockedOnState = state.NewState()
 local travelState = state.NewState()
 local preliminaryFreeLookState = state.NewState()
 local freeLookState = state.NewState()
 
+lockedOnState:set({
+    name = "lockedOnState",
+    target = nil,
+    onEnter = function(base)
+        pself.controls.movement = 0
+        pself.controls.yawChange = 0
+        pself.controls.pitchChange = 0
+        pself.controls.run = false
+        if base.target == nil then
+            error("no target for locked-on state")
+        end
+    end,
+    onExit = function(base)
+        resetCamera()
+    end,
+    onFrame = function(base, dt)
+        if keyLock.rise then
+            stateMachine:replace(travelState)
+            return
+        end
+        track(base.target:getBoundingBox().center, 0.3)
+        if keyForward.pressed then
+            pself.controls.movement = keyForward.analog
+        elseif keyBackward.pressed then
+            pself.controls.movement = -1 * keyBackward.analog
+        else
+            pself.controls.movement = 0
+        end
+        if keyLeft.pressed then
+            pself.controls.sideMovement = -1 * keyLeft.analog
+        elseif keyRight.pressed then
+            pself.controls.sideMovement = keyRight.analog
+        else
+            pself.controls.sideMovement = 0
+        end
+    end,
+})
+
 lockSelectionState:set({
     name = "lockSelectionState",
+    selectingActors = true,
     currentTarget = nil,
     actors = {},
     others = {},
@@ -280,8 +308,10 @@ lockSelectionState:set({
             end)
 
         base.currentTarget = base.actors:next()
+        base.selectingActors = true
         if base.currentTarget == nil then
             base.currentTarget = base.others:next()
+            base.selectingActors = false
         end
         if base.currentTarget == nil then
             settings.debugPrint("no valid targets!")
@@ -298,8 +328,8 @@ lockSelectionState:set({
             if base.currentTarget then
                 -- we selected a target
                 print("Locking onto " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ")!")
-                -- TODO: enter locked state
-                stateMachine:replace(travelState)
+                lockedOnState.base.target = base.currentTarget
+                stateMachine:replace(lockedOnState)
             else
                 -- no target, so move to travel state.
                 stateMachine:replace(travelState)
@@ -318,19 +348,35 @@ lockSelectionState:set({
         -- up/down cycles actors
         -- left/right cycles everything else
         if keyForward.rise then
+            base.selectingActors = true
             newTarget(base.actors:next())
         elseif keyBackward.rise then
+            base.selectingActors = true
             newTarget(base.actors:previous())
         end
         if keyLeft.rise then
+            base.selectingActors = false
             newTarget(base.others:previous())
         elseif keyRight.rise then
+            base.selectingActors = false
             newTarget(base.others:next())
         end
 
-        if base.currentTarget ~= nil then
-            look(base.currentTarget:getBoundingBox().center, 0.3)
+        if (base.currentTarget == nil) then
+            stateMachine:replace(travelState)
+            return
         end
+
+        -- If we stay paused, then targets should remain valid as we cycle through them.
+        if base.currentTarget:isValid() and base.currentTarget.enabled then
+            look(base.currentTarget:getBoundingBox().center, 0.3)
+        else
+            settings.debugPrint("target no longer valid")
+            stateMachine:replace(travelState)
+            return
+        end
+
+        -- TODO: why are we looking away after picking up a tracked item?
     end
 })
 
