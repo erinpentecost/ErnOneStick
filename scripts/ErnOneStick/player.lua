@@ -86,54 +86,42 @@ local function resetCamera()
 end
 
 local function look(worldVector, dt)
-    --local direction = (worldVector - camera.getPosition()):normalize()
-    local direction = (worldVector - camera.getPosition()):normalize()
-    -- from DynamicCamera
+    local playerBox = pself:getBoundingBox().center + util.vector3(0, 0, pself:getBoundingBox().halfSize.z)
+    local playerHead = camera.getPosition()
+    settings.debugPrint(tostring(playerBox) .. "   " .. tostring(playerHead))
 
-    local targetYaw = radians.normalize(math.atan(direction.x, direction.y))
-    local targetPitch = radians.normalize(math.max(-1.57, math.min(1.57, -math.asin(direction.z))))
+    local direction = (worldVector - pself.position):normalize()
 
+    local targetYaw = util.normalizeAngle(math.atan(direction.x, direction.y))
+    local targetPitch = util.normalizeAngle(-math.asin(direction.z))
 
-
-
-    -- Force camera into position an/d override input controls this frame
-    --camera.setYaw(targetYaw)
-    --camera.setPitch(targetPitch)
-    --
-
-    -- actually rotate the player so they are facing that direction
+    -- Actually rotate the player so they are facing that direction.
+    -- This will also change the camera to match.
     local trans = util.transform
     core.sendGlobalEvent(settings.MOD_NAME .. "onRotate", {
         object = pself,
         rotation = trans.rotateZ(targetYaw) * trans.rotateX(targetPitch)
     })
 
-    --settings.debugPrint(aux_util.deepToString(camera.rotation, 3))]]
-
-    -- Force pself rotation to match camera.
-    --pself.position = camera.getViewTransform():apply(pself.position)
-
-
-    --local localDesiredPoint = camera.worldToViewportVector(desiredPoint)
-    settings.debugPrint("Pitch/Yaw: target(" ..
+    --[[settings.debugPrint("Pitch/Yaw: target(" ..
         string.format("%.3f", targetYaw) ..
         "/" .. string.format("%.3f", targetPitch) ..
         ") actual(" ..
         string.format("%.3f", camera.getYaw()) .. "/" .. string.format("%.3f", camera.getPitch()) ..
         ") self(" ..
         string.format("%.3f", pself.rotation:getYaw()) .. "/" .. string.format("%.3f", pself.rotation:getPitch()) ..
-        ")")
+        ")")]]
 end
 
 local function look2(worldVector, dt)
     -- seems like we need to do BOTH camera.setYaw and pself.controls.pitchChange
     local direction = (worldVector - pself.position):normalize()
     local targetYaw = math.atan(direction.x, direction.y)
-    local targetPitch = radians.normalize(-math.asin(direction.z))
+    local targetPitch = util.normalizeAngle(-math.asin(direction.z))
     camera.setYaw(targetYaw)
     --camera.setPitch(targetPitch)
-    --pself.controls.yawChange = radians.normalize(targetYaw) - pself.rotation:getYaw()
-    --pself.controls.pitchChange = radians.normalize(targetPitch) - pself.rotation:getPitch()
+    --pself.controls.yawChange = util.normalizeAngle(targetYaw) - pself.rotation:getYaw()
+    --pself.controls.pitchChange = util.normalizeAngle(targetPitch) - pself.rotation:getPitch()
 end
 
 input.registerAction {

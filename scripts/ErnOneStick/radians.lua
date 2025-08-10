@@ -1,38 +1,18 @@
 local util = require('openmw.util')
 
-local two_pi = 2 * math.pi
+local phi = 2 * math.pi
 local eps = 1e-12
 
-local function normalize(angle)
-    return util.normalizeAngle(angle)
-end
-
-local function angleDiff(a, b)
-    -- signed shortest difference a - b in (-pi, pi]
-    local d = (a - b) % two_pi
-    if d > math.pi then d = d - two_pi end
-    -- map small numerical -pi to +pi for consistency
-    if math.abs(d + math.pi) < eps then
-        return math.pi
-    end
-    return d
-end
-
-local function anglesAlmostEqual(a, b, tol)
-    tol = tol or 1e-12
-    return math.abs(angleDiff(a, b)) < tol
-end
-
 local function subtract(a, b)
-    local s = normalize(a)
-    local e = normalize(b)
+    local s = util.normalizeAngle(a)
+    local e = util.normalizeAngle(b)
 
     -- compute diff in [0, 2pi)
-    local diff = (e - s) % two_pi
+    local diff = (e - s) % phi
 
     -- if > pi, go the negative way (diff - 2pi)
     if diff > math.pi then
-        diff = diff - two_pi
+        diff = diff - phi
     elseif math.abs(diff - math.pi) < eps then
         -- tie (exact half-turn): choose the positive rotation (+pi)
         diff = math.pi
@@ -40,23 +20,28 @@ local function subtract(a, b)
     return diff
 end
 
+local function anglesAlmostEqual(a, b, tol)
+    tol = tol or 1e-12
+    return math.abs(subtract(a, b)) < tol
+end
+
 local function lerpAngle(startAngle, endAngle, t)
-    local s = normalize(startAngle)
-    local e = normalize(endAngle)
+    local s = util.normalizeAngle(startAngle)
+    local e = util.normalizeAngle(endAngle)
 
     -- compute diff in [0, 2pi)
-    local diff = (e - s) % two_pi
+    local diff = (e - s) % phi
 
     -- if > pi, go the negative way (diff - 2pi)
     if diff > math.pi then
-        diff = diff - two_pi
+        diff = diff - phi
     elseif math.abs(diff - math.pi) < eps then
         -- tie (exact half-turn): choose the positive rotation (+pi)
         diff = math.pi
     end
 
     local result = s + diff * t
-    return normalize(result)
+    return util.normalizeAngle(result)
 end
 
 -- Tests (corrected expectations and modular comparisons)
@@ -73,7 +58,6 @@ local passed = 0
 for _, test in ipairs(tests) do
     local got = lerpAngle(test.start, test.finish, test.t)
     if anglesAlmostEqual(got, test.expected) then
-        --print("✔ PASS:", test.name)
         passed = passed + 1
     else
         error("failed radian test: " .. test.name)
@@ -82,7 +66,6 @@ for _, test in ipairs(tests) do
 end
 
 return {
-    normalize = normalize,
     lerpAngle = lerpAngle,
     subtract = subtract,
     anglesAlmostEqual = anglesAlmostEqual,
