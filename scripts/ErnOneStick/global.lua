@@ -26,13 +26,13 @@ end
 settings.initSettings()
 
 local function onPause()
-    world.setSimulationTimeScale(0.05)
-    --world.pause(settings.MOD_NAME)
+    --world.setSimulationTimeScale(0.05)
+    world.pause(settings.MOD_NAME)
 end
 
 local function onUnpause()
-    world.setSimulationTimeScale(1)
-    --world.unpause(settings.MOD_NAME)
+    --world.setSimulationTimeScale(1)
+    world.unpause(settings.MOD_NAME)
 end
 
 local function onRotate(data)

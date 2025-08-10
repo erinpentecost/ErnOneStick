@@ -192,10 +192,10 @@ local lockedOnState = state.NewState()
 local travelState = state.NewState()
 local preliminaryFreeLookState = state.NewState()
 local freeLookState = state.NewState()
-local skipInput = state.NewState()
+local uiState = state.NewState()
 
-skipInput:set({
-    name = "skipInput",
+uiState:set({
+    name = "uiState",
     onEnter = function(base)
         controls.overrideMovementControls(false)
     end,
@@ -229,7 +229,7 @@ lockedOnState:set({
             stateMachine:replace(travelState)
             return
         end
-        track(base.target:getBoundingBox().center, 0.3)
+        track(base.target:getBoundingBox().center, 0.6)
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
         elseif keyBackward.pressed then
@@ -409,7 +409,7 @@ travelState:set({
         pself.controls.yawChange = 0
     end,
     onFrame = function(s, dt)
-        if keyLock.rise then
+        if keyLock.rise and types.Actor.canMove(pself) then
             print("travel state: lock started")
             stateMachine:replace(preliminaryFreeLookState)
             return
@@ -443,6 +443,9 @@ travelState:set({
 preliminaryFreeLookState:set({
     name = "preliminaryFreeLookState",
     onFrame = function(base, dt)
+        if types.Actor.canMove(pself) == false then
+            stateMachine:replace(travelState)
+        end
         -- we released the lock button
         if keyLock.fall then
             stateMachine:replace(lockSelectionState)
@@ -484,7 +487,7 @@ freeLookState:set({
         -- set "looking" to true and force first-person perspective.
         -- when we exit this state, if "looking" is true, we go back to travel mode.
         -- otherwise, we enter lock-on mode.
-        if keyLock.fall then
+        if keyLock.fall or (types.Actor.canMove(pself) == false) then
             stateMachine:replace(travelState)
             return
         end
@@ -539,7 +542,7 @@ end
 
 local function UiModeChanged(data)
     if (data.newMode ~= nil) and (data.oldMode == nil) then
-        stateMachine:push(skipInput)
+        stateMachine:push(uiState)
     end
 end
 
