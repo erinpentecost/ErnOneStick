@@ -1,14 +1,30 @@
+--[[
+ErnOneStick for OpenMW.
+Copyright (C) 2025 Erin Pentecost
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+]]
 local util = require('openmw.util')
 
 local phi = 2 * math.pi
 local eps = 1e-12
 
 local function subtract(a, b)
-    local s = util.normalizeAngle(a)
-    local e = util.normalizeAngle(b)
+    a = util.normalizeAngle(a)
+    b = util.normalizeAngle(b)
 
-    -- compute diff in [0, 2pi)
-    local diff = (e - s) % phi
+    local diff = (b - a) % phi
 
     -- if > pi, go the negative way (diff - 2pi)
     if diff > math.pi then
@@ -26,11 +42,10 @@ local function anglesAlmostEqual(a, b, tol)
 end
 
 local function lerpAngle(startAngle, endAngle, t)
-    local s = util.normalizeAngle(startAngle)
-    local e = util.normalizeAngle(endAngle)
+    startAngle = util.normalizeAngle(startAngle)
+    endAngle = util.normalizeAngle(endAngle)
 
-    -- compute diff in [0, 2pi)
-    local diff = (e - s) % phi
+    local diff = (endAngle - startAngle) % phi
 
     -- if > pi, go the negative way (diff - 2pi)
     if diff > math.pi then
@@ -40,7 +55,7 @@ local function lerpAngle(startAngle, endAngle, t)
         diff = math.pi
     end
 
-    local result = s + diff * t
+    local result = startAngle + diff * t
     return util.normalizeAngle(result)
 end
 
@@ -57,9 +72,7 @@ local tests = {
 local passed = 0
 for _, test in ipairs(tests) do
     local got = lerpAngle(test.start, test.finish, test.t)
-    if anglesAlmostEqual(got, test.expected) then
-        passed = passed + 1
-    else
+    if anglesAlmostEqual(got, test.expected) ~= true then
         error("failed radian test: " .. test.name)
         return
     end

@@ -33,6 +33,7 @@ local input = require('openmw.input')
 local controls = require('openmw.interfaces').Controls
 local nearby = require('openmw.nearby')
 local cameraInterface = require("openmw.interfaces").Camera
+local uiInterface = require("openmw.interfaces").UI
 
 settings.registerPage()
 
@@ -191,6 +192,22 @@ local lockedOnState = state.NewState()
 local travelState = state.NewState()
 local preliminaryFreeLookState = state.NewState()
 local freeLookState = state.NewState()
+local skipInput = state.NewState()
+
+skipInput:set({
+    name = "skipInput",
+    onEnter = function(base)
+        controls.overrideMovementControls(false)
+    end,
+    onExit = function(base)
+        controls.overrideMovementControls(true)
+    end,
+    onFrame = function(base, dt)
+        if uiInterface.getMode() == nil then
+            stateMachine:pop()
+        end
+    end
+})
 
 lockedOnState:set({
     name = "lockedOnState",
@@ -520,7 +537,16 @@ local function onUpdate(dt)
     onGround = types.Actor.isOnGround(pself)
 end
 
+local function UiModeChanged(data)
+    if (data.newMode ~= nil) and (data.oldMode == nil) then
+        stateMachine:push(skipInput)
+    end
+end
+
 return {
+    eventHandlers = {
+        UiModeChanged = UiModeChanged
+    },
     engineHandlers = {
         onFrame = onFrame,
         onUpdate = onUpdate
