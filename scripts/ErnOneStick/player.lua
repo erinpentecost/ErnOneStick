@@ -511,6 +511,8 @@ travelState:set({
         -- Don't do this when swimming or levitating so the player
         -- can point up or down.
         if onGround then
+            -- TODO: raycast down from a foot in front of the camera
+            -- so I can aim up or down when on stairs.
             trackPitch(0, 0.1)
         end
         if keyForward.pressed then
