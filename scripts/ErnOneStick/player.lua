@@ -20,6 +20,7 @@ local state = require("scripts.ErnOneStick.state")
 local radians = require("scripts.ErnOneStick.radians")
 local keytrack = require("scripts.ErnOneStick.keytrack")
 local targets = require("scripts.ErnOneStick.targets")
+local boxes = require("scripts.ErnOneStick.boxes")
 local core = require("openmw.core")
 local pself = require("openmw.self")
 local camera = require('openmw.camera')
@@ -260,6 +261,54 @@ lockedOnState:set({
     end,
 })
 
+local function hasLOS(playerHead, entity)
+    local box = entity:getBoundingBox()
+
+    -- should add anything that the item intersects with to the
+    -- ignore list. items clip into tables and weapon racks.
+    -- instead of casting from the center of the entity, cast from near the surface of the box
+    -- facing the playerHead. this is needed so items on racks don't collide with the wall meshes.
+    local fudgeFactor = math.min(30, (playerHead - box.center):length() / 2)
+
+    local startPosition = box.center + (((playerHead - box.center)):normalize() * fudgeFactor)
+
+    local ignoreList = {}
+    table.insert(ignoreList, entity)
+    for i = 1, 10 do
+        local castResult = nearby.castRay(startPosition, playerHead, {
+            collisionType = nearby.COLLISION_TYPE.Default,
+            ignore = ignoreList
+        })
+        if castResult.hit == false then
+            settings.debugPrint("collison: " .. entity.recordId .. " shot out into space")
+            return false
+        end
+        if (castResult.hitObject ~= nil) and (castResult.hitObject.id == pself.id) then
+            return true
+        end
+        -- if the thing we hit is intersecting with us, then skip it and try again.
+        if (castResult.hitPos ~= nil) and boxes.inBox(castResult.hitPos, box) then
+            settings.debugPrint("inBox(" .. tostring(castResult.hitPos) .. "," .. tostring(entity.recordId) .. ")")
+            -- ignore the thing we hit (if it's an object)
+            if castResult.hitObject ~= nil then
+                table.insert(ignoreList, castResult.hitObject)
+            end
+            -- also advance the start position (in the case of world or heightmap)
+            startPosition = castResult.hitPos
+        else
+            if castResult.hitObject ~= nil then
+                settings.debugPrint("collison: " .. entity.recordId .. " stopped by " .. castResult.hitObject.recordId)
+            else
+                settings.debugPrint("collison: " .. entity.recordId .. " stopped by something")
+            end
+
+            return false
+        end
+    end
+    settings.debugPrint("collison: " .. entity.recordId .. " gave up")
+    return false
+end
+
 lockSelectionState:set({
     name = "lockSelectionState",
     selectingActors = true,
@@ -286,20 +335,15 @@ lockSelectionState:set({
                 if types.Actor.isDead(e) then
                     return false
                 end
-                local center = e:getBoundingBox().center
-                if (playerHead - center):length() > math.max(reach, 1000) then
-                    -- this is longer than reach because of ranged weapons and spears, etc.
+                -- use an extra-long reach if we have weapons or spells ready.
+                local actorReach = reach
+                if types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing then
+                    actorReach = 1000
+                end
+                if (playerHead - e:getBoundingBox().center):length() > actorReach then
                     return false
                 end
-                local castResult = nearby.castRay(center, playerHead, {
-                    collisionType = nearby.COLLISION_TYPE.Default,
-                    ignore = e
-                })
-                settings.debugPrint("raycast from " ..
-                    aux_util.deepToString(playerHead, 3) ..
-                    " to " ..
-                    aux_util.deepToString(center, 3) .. ": hit " .. aux_util.deepToString(castResult.hitObject, 3))
-                return (castResult.hitObject ~= nil) and (castResult.hitObject.id == pself.id)
+                return hasLOS(playerHead, e)
             end)
 
         local others = {}
@@ -328,21 +372,10 @@ lockSelectionState:set({
                 if e.type == types.Actor and (types.Actor.isDead(e) == false) then
                     return false
                 end
-                local center = e:getBoundingBox().center
-                if (playerHead - center):length() > reach then
+                if (playerHead - e:getBoundingBox().center):length() > reach then
                     return false
                 end
-                -- should add anything that the item intersects with to the
-                -- ignore list. items clip into tables and weapon racks.
-                local castResult = nearby.castRay(center, playerHead, {
-                    collisionType = nearby.COLLISION_TYPE.Default,
-                    ignore = e
-                })
-                --[[settings.debugPrint("raycast from " ..
-                    aux_util.deepToString(playerHead, 3) ..
-                    " to " ..
-                    aux_util.deepToString(center, 3) .. ": hit " .. aux_util.deepToString(castResult.hitObject, 3))]]
-                return (castResult.hitObject ~= nil) and (castResult.hitObject.id == pself.id)
+                return hasLOS(playerHead, e)
             end)
 
         base.currentTarget = base.actors:next()
@@ -379,6 +412,7 @@ lockSelectionState:set({
             if (new ~= nil) and (new ~= base.currentTarget) then
                 -- target changed
                 base.currentTarget = new
+                -- TODO: why is this being called multiple times for one button press??
                 print("Looking at " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
             end
         end
@@ -391,8 +425,7 @@ lockSelectionState:set({
         elseif keyBackward.rise then
             base.selectingActors = true
             newTarget(base.actors:previous())
-        end
-        if keyLeft.rise then
+        elseif keyLeft.rise then
             base.selectingActors = false
             newTarget(base.others:previous())
         elseif keyRight.rise then
