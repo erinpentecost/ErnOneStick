@@ -136,6 +136,21 @@ local function look(worldVector, t)
         ")")]]
 end
 
+local function isActor(entity)
+    return entity.type == types.Actor or entity.type == types.NPC or entity.type == types.Creature
+end
+
+local function lockOnPosition(entity)
+    -- this is bad for NPCs because you aren't looking at their faces.
+    -- this is bad for items because the center of the box isn't necessarily a clickable
+    -- part of the model.
+    local pos = entity:getBoundingBox().center
+    if isActor(entity) then
+        pos = pos + util.vector3(0, 0, (entity:getBoundingBox().halfSize.z) * 0.7)
+    end
+    return pos
+end
+
 local reach = 0
 local handleReach = function()
     -- magnitude of telekinesis is in feet
@@ -243,7 +258,7 @@ lockedOnState:set({
             stateMachine:replace(travelState)
             return
         end
-        track(base.target:getBoundingBox().center, 0.6)
+        track(lockOnPosition(base.target), 0.6)
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
         elseif keyBackward.pressed then
@@ -369,7 +384,7 @@ lockSelectionState:set({
                     return false
                 end
                 -- only dead actors allowed
-                if e.type == types.Actor and (types.Actor.isDead(e) == false) then
+                if isActor(e) and (types.Actor.isDead(e) == false) then
                     return false
                 end
                 if (playerHead - e:getBoundingBox().center):length() > reach then
@@ -440,7 +455,7 @@ lockSelectionState:set({
 
         -- If we stay paused, then targets should remain valid as we cycle through them.
         if base.currentTarget:isValid() and base.currentTarget.enabled then
-            look(base.currentTarget:getBoundingBox().center, 0.3)
+            look(lockOnPosition(base.currentTarget), 0.3)
         else
             settings.debugPrint("target no longer valid")
             stateMachine:replace(travelState)
