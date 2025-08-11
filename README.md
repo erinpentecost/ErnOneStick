@@ -11,5 +11,18 @@ In *target selection mode*, push your stick up or down to cycle through actor ta
 
 In *lock-on mode*, your camera will remain pinned on your target. Your stick moves back and forward and strafes. Tap the Lock Button to go back to *travel mode*.
 
-## Shaders
+## Installing
+
+Download the [latest version here](https://github.com/erinpentecost/ErnOneStick/archive/refs/heads/main.zip).
+
+Extract to your `mods/` folder. In your `openmw.cfg` file, add these lines in the correct spots:
+
+```ini
+data="/wherevermymodsare/mods/ErnOneStick-main"
+content=ErnOneStick.omwscripts
+```
+
+## Notes
+
+### Shaders
 Shaders are copied from [Max Yari's Dynamic camera effects and target lock](https://www.nexusmods.com/morrowind/mods/55327) mod, with permission.
