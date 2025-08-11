@@ -1,5 +1,3 @@
-// Copyright (C) 2025 Max Yari
-
 uniform_int uSamples {
     default = 10;
     step = 1;

@@ -1,5 +1,3 @@
-// Copyright (C) 2025 Max Yari
-
 uniform_float uMidPoint {
     header = "Shape";
     default = 0;

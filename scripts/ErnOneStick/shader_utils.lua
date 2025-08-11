@@ -22,14 +22,13 @@ ShaderWrapper.__index = ShaderWrapper
 
 local shaderInstances = {}
 
-function NewShaderWrapper(name, uniforms, shouldBeEnabled)
+function NewShaderWrapper(name, uniforms)
     if not uniforms then uniforms = {} end
     local shader = postprocessing.load(name)
     local instance = {
         name = name,
         shader = shader,
         enabled = false,
-        shouldBeEnabled = shouldBeEnabled,
         u = {},
         _u = {}
     }
@@ -63,25 +62,13 @@ function NewShaderWrapper(name, uniforms, shouldBeEnabled)
     return instance
 end
 
-function ShaderWrapper:enable()
-    if not self.enabled then
-        self.shader:enable()
-        self.enabled = true
-    end
-end
-
-function ShaderWrapper:disable()
-    if self.enabled then
-        self.shader:disable()
-        self.enabled = false
-    end
-end
-
 function HandleShaders(dt)
     for _, shader in pairs(shaderInstances) do
         if shader.tweener then shader.tweener:tick(dt) end
-        if shader:shouldBeEnabled() then
-            shader:enable()
+        if shader.enabled then
+            shader.shader:enable()
+        else
+            shader.shader:disable()
         end
     end
 end

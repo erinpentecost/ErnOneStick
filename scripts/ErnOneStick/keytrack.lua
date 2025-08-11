@@ -55,7 +55,8 @@ function KeyFunctions.update(self, dt)
         elseif newState < triggerThreshold then
             newBooleanState = false
         else
-            return
+            -- we are in a deadzone, so don't change pressed value
+            newBooleanState = self.pressed
         end
     else
         error("unsupported type for key tracker: " .. type(newState))

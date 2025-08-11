@@ -16,6 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 
+local camera = require('openmw.camera')
 local util = require('openmw.util')
 local pself = require("openmw.self")
 
@@ -48,7 +49,8 @@ function TargetCollection:sort()
     self.gameObjects = filtered
 
     -- could maybe use camera.viewportToWorldVector(0.5, 0.5) instead to get facing.
-    local facing = pself.rotation:apply(util.vector3(0.0, 1.0, 0.0)):normalize()
+    --local facing = pself.rotation:apply(util.vector3(0.0, 1.0, 0.0)):normalize()
+    local facing = camera.viewportToWorldVector(util.vector2(0.5, 0.5)):normalize()
     -- sort by most weight first
     local weight = {}
     for i, e in ipairs(self.gameObjects) do

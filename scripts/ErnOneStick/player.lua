@@ -21,7 +21,6 @@ local radians = require("scripts.ErnOneStick.radians")
 local keytrack = require("scripts.ErnOneStick.keytrack")
 local targets = require("scripts.ErnOneStick.targets")
 local shaderUtils = require("scripts.ErnOneStick.shader_utils")
-local boxes = require("scripts.ErnOneStick.boxes")
 local core = require("openmw.core")
 local pself = require("openmw.self")
 local camera = require('openmw.camera')
@@ -57,13 +56,16 @@ local onGround = types.Actor.isOnGround(pself)
 
 -- reference: https://openmw.readthedocs.io/en/stable/reference/lua-scripting/openmw_self.html##(ActorControls)
 
-local blackScreenShader = shaderUtils.ShaderWrapper:new('blackScreen', {
-    opacity = 0
-}, function(self) return self.u.opacity > 0 end)
-
 local function resetCamera()
     camera.setYaw(pself.rotation:getYaw())
     camera.setPitch(pself.rotation:getPitch())
+end
+
+local function inBox(position, box)
+    local normalized = box.transform:inverse():apply(position)
+    return math.abs(normalized.x) <= 1
+        and math.abs(normalized.y) <= 1
+        and math.abs(normalized.z) <= 1
 end
 
 local function targetAngles(worldVector, t)
@@ -214,6 +216,13 @@ end
 
 local stateMachine = state.NewStateContainer()
 
+
+local hexDofShader = shaderUtils.NewShaderWrapper("hexDoFProgrammable", {
+    uDepth = 0,
+    uAperture = 0.8,
+    enabled = false,
+})
+
 local normalState = state.NewState({
     name = "normalState",
     onFrame = function(dt) end
@@ -257,6 +266,8 @@ lockedOnState:set({
     end,
     onExit = function(base)
         resetCamera()
+        pself.controls.movement = 0
+        pself.controls.sideMovement = 0
     end,
     onFrame = function(base, dt)
         if keyLock.rise then
@@ -307,7 +318,7 @@ local function hasLOS(playerHead, entity)
             return true
         end
         -- if the thing we hit is intersecting with us, then skip it and try again.
-        if (castResult.hitPos ~= nil) and boxes.inBox(castResult.hitPos, box) then
+        if (castResult.hitPos ~= nil) and inBox(castResult.hitPos, box) then
             settings.debugPrint("inBox(" .. tostring(castResult.hitPos) .. "," .. tostring(entity.recordId) .. ")")
             -- ignore the thing we hit (if it's an object)
             if castResult.hitObject ~= nil then
@@ -406,6 +417,12 @@ lockSelectionState:set({
         end
         if base.currentTarget == nil then
             settings.debugPrint("no valid targets!")
+            -- we will exit this state on next frame.
+            -- TODO: play a "no targets" sound.
+        else
+            settings.debugPrint("Looking at " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
+            hexDofShader.enabled = true
+            -- TODO: play a "locking on" sound.
         end
     end,
     onExit = function(base)
@@ -413,6 +430,8 @@ lockSelectionState:set({
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
         resetCamera()
+
+        hexDofShader.enabled = false
     end,
     onFrame = function(base, dt)
         if keyLock.rise then
@@ -431,9 +450,9 @@ lockSelectionState:set({
         local newTarget = function(new)
             if (new ~= nil) and (new ~= base.currentTarget) then
                 -- target changed
+                -- TODO: play a "target changed" sound.
                 base.currentTarget = new
-                -- TODO: why is this being called multiple times for one button press??
-                print("Looking at " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
+                settings.debugPrint("Looking at " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
             end
         end
 
@@ -460,14 +479,14 @@ lockSelectionState:set({
 
         -- If we stay paused, then targets should remain valid as we cycle through them.
         if base.currentTarget:isValid() and base.currentTarget.enabled then
-            look(lockOnPosition(base.currentTarget), 0.3)
+            local lockPosition = lockOnPosition(base.currentTarget)
+            look(lockPosition, 0.3)
+            hexDofShader.u.uDepth = (lockPosition - camera.getPosition()):length()
         else
             settings.debugPrint("target no longer valid")
             stateMachine:replace(travelState)
             return
         end
-
-        -- TODO: why are we looking away after picking up a tracked item?
     end
 })
 
@@ -613,6 +632,7 @@ end
 local function onUpdate(dt)
     if dt == 0 then return end
     onGround = types.Actor.isOnGround(pself)
+    shaderUtils.HandleShaders(dt)
 end
 
 local function UiModeChanged(data)
