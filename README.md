@@ -17,3 +17,6 @@ You get a new button that cycles between Ready Weapon, Ready Magic, and Unready 
 
 ## Attack-Activate-Jump
 You get a new button that attacks if you have a Weapon or Magic readied, and Activates otherwise. If there is nothing to Activate, then you Jump instead.
+
+## Shaders
+Shaders are copied from [Max Yari's Dynamic camera effects and target lock](https://www.nexusmods.com/morrowind/mods/55327) mod, with permission.

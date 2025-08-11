@@ -20,6 +20,7 @@ local state = require("scripts.ErnOneStick.state")
 local radians = require("scripts.ErnOneStick.radians")
 local keytrack = require("scripts.ErnOneStick.keytrack")
 local targets = require("scripts.ErnOneStick.targets")
+local shaderUtils = require("scripts.ErnOneStick.shader_utils")
 local boxes = require("scripts.ErnOneStick.boxes")
 local core = require("openmw.core")
 local pself = require("openmw.self")
@@ -55,6 +56,10 @@ end
 local onGround = types.Actor.isOnGround(pself)
 
 -- reference: https://openmw.readthedocs.io/en/stable/reference/lua-scripting/openmw_self.html##(ActorControls)
+
+local blackScreenShader = shaderUtils.ShaderWrapper:new('blackScreen', {
+    opacity = 0
+}, function(self) return self.u.opacity > 0 end)
 
 local function resetCamera()
     camera.setYaw(pself.rotation:getYaw())
