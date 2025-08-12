@@ -133,6 +133,7 @@ function StateContainerFunctions.pop(self, skipOnEnter)
 end
 
 function StateContainerFunctions.replace(self, state)
+    -- skip onEnter for the state below, since we are replacing it immediately.
     local popped = StateContainerFunctions.pop(self, true)
     StateContainerFunctions.push(self, state)
     return popped

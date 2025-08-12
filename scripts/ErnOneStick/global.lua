@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local settings = require("scripts.ErnOneStick.settings")
 local world = require('openmw.world')
+local aux_util = require('openmw_aux.util')
 
 if require("openmw.core").API_REVISION < 62 then
     error("OpenMW 0.49 or newer is required!")
@@ -26,12 +27,10 @@ end
 settings.initSettings()
 
 local function onPause()
-    --world.setSimulationTimeScale(0.05)
     world.pause(settings.MOD_NAME)
 end
 
 local function onUnpause()
-    --world.setSimulationTimeScale(1)
     world.unpause(settings.MOD_NAME)
 end
 
@@ -39,10 +38,39 @@ local function onRotate(data)
     data.object:teleport(data.object.cell, data.object.position, data.rotation)
 end
 
+local onNextFrame = nil
+
+local function onActivate(data)
+    settings.debugPrint("onActivate(" .. aux_util.deepToString(data, 3) .. ")...")
+    if world.isWorldPaused() then
+        settings.debugPrint("paused; scheduling next-frame activate")
+        onNextFrame = function()
+            settings.debugPrint("doing next-frame activate")
+            data.entity:activateBy(data.player)
+        end
+    else
+        data.entity:activateBy(data.player)
+    end
+end
+
+local function onUpdate(dt)
+    if dt == 0 then
+        return
+    end
+    if onNextFrame ~= nil then
+        onNextFrame()
+        onNextFrame = nil
+    end
+end
+
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "onPause"] = onPause,
         [settings.MOD_NAME .. "onUnpause"] = onUnpause,
         [settings.MOD_NAME .. "onRotate"] = onRotate,
+        [settings.MOD_NAME .. "onActivate"] = onActivate,
+    },
+    engineHandlers = {
+        onUpdate = onUpdate
     }
 }

@@ -200,9 +200,19 @@ end)
 local keySneak = keytrack.NewKey("sneak",
     function(dt) return input.getBooleanActionValue("Sneak") end)
 
+--[[
+local keyActivate = keytrack.NewKey("activate",
+    function(dt) return input.getBooleanActionValue("Activate") end)
+    ]]
+
 -- Jump is a trigger, not an action.
 input.registerTriggerHandler("Jump", async:callback(function() pself.controls.jump = true end))
 
+local activating = false
+input.registerTriggerHandler("Activate", async:callback(function() activating = true end))
+local function handleActivate(dt)
+    activating = false
+end
 
 -- Have to recreate sneak toggle.
 local sneaking = false
@@ -245,7 +255,7 @@ uiState:set({
     onExit = function(base)
         controls.overrideMovementControls(true)
     end,
-    onFrame = function(base, dt)
+    onFrame = function(state, dt)
         if uiInterface.getMode() == nil then
             stateMachine:pop()
         end
@@ -269,12 +279,12 @@ lockedOnState:set({
         pself.controls.movement = 0
         pself.controls.sideMovement = 0
     end,
-    onFrame = function(base, dt)
+    onFrame = function(s, dt)
         if keyLock.rise then
             stateMachine:replace(travelState)
             return
         end
-        track(lockOnPosition(base.target), 0.6)
+        track(lockOnPosition(s.base.target), 0.6)
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
         elseif keyBackward.pressed then
@@ -294,6 +304,12 @@ lockedOnState:set({
 
 local function hasLOS(playerHead, entity)
     local box = entity:getBoundingBox()
+
+
+    if inBox(playerHead, box) then
+        settings.debugPrint("collison: " .. entity.recordId .. " contains playerhead")
+        return true
+    end
 
     -- should add anything that the item intersects with to the
     -- ignore list. items clip into tables and weapon racks.
@@ -353,17 +369,23 @@ lockSelectionState:set({
         pself.controls.pitchChange = 0
         resetCamera()
         core.sendGlobalEvent(settings.MOD_NAME .. "onPause")
+        uiInterface.setHudVisibility(false)
+        controls.overrideUiControls(true)
         camera.setMode(camera.MODE.FirstPerson, true)
 
         local playerHead = pself:getBoundingBox().center + util.vector3(0, 0, pself:getBoundingBox().halfSize.z)
-        --local playerHead = camera.getPosition()
+
 
         base.actors = targets.TargetCollection:new(nearby.actors,
             function(e)
+                --settings.debugPrint("Filtering actor " .. e.recordId .. " (" .. e.id .. ")....")
                 if e:isValid() == false then
                     return false
                 end
                 if types.Actor.isDead(e) then
+                    return false
+                end
+                if e.id == pself.id then
                     return false
                 end
                 -- use an extra-long reach if we have weapons or spells ready.
@@ -396,7 +418,11 @@ lockSelectionState:set({
 
         base.others = targets.TargetCollection:new(others,
             function(e)
+                --settings.debugPrint("Filtering non-actor " .. e.recordId .. " (" .. e.id .. ")....")
                 if e:isValid() == false then
+                    return false
+                end
+                if e.id == pself.id then
                     return false
                 end
                 -- only dead actors allowed
@@ -427,18 +453,20 @@ lockSelectionState:set({
     end,
     onExit = function(base)
         core.sendGlobalEvent(settings.MOD_NAME .. "onUnpause")
+        uiInterface.setHudVisibility(true)
+        controls.overrideUiControls(false)
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
         resetCamera()
 
         hexDofShader.enabled = false
     end,
-    onFrame = function(base, dt)
+    onFrame = function(s, dt)
         if keyLock.rise then
-            if base.currentTarget then
+            if s.base.currentTarget then
                 -- we selected a target
-                print("Locking onto " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ")!")
-                lockedOnState.base.target = base.currentTarget
+                print("Locking onto " .. s.base.currentTarget.recordId .. " (" .. s.base.currentTarget.id .. ")!")
+                lockedOnState.base.target = s.base.currentTarget
                 stateMachine:replace(lockedOnState)
             else
                 -- no target, so move to travel state.
@@ -448,44 +476,70 @@ lockSelectionState:set({
         end
 
         local newTarget = function(new)
-            if (new ~= nil) and (new ~= base.currentTarget) then
+            if (new ~= nil) and (new ~= s.base.currentTarget) then
                 -- target changed
                 -- TODO: play a "target changed" sound.
-                base.currentTarget = new
-                settings.debugPrint("Looking at " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
+                s.base.currentTarget = new
+                settings.debugPrint("Looking at " ..
+                    s.base.currentTarget.recordId .. " (" .. s.base.currentTarget.id .. ").")
             end
         end
 
         -- up/down cycles actors
         -- left/right cycles everything else
         if keyForward.rise then
-            base.selectingActors = true
-            newTarget(base.actors:next())
+            s.base.selectingActors = true
+            newTarget(s.base.actors:next())
         elseif keyBackward.rise then
-            base.selectingActors = true
-            newTarget(base.actors:previous())
+            s.base.selectingActors = true
+            newTarget(s.base.actors:previous())
         elseif keyLeft.rise then
-            base.selectingActors = false
-            newTarget(base.others:previous())
+            s.base.selectingActors = false
+            newTarget(s.base.others:previous())
         elseif keyRight.rise then
-            base.selectingActors = false
-            newTarget(base.others:next())
+            s.base.selectingActors = false
+            newTarget(s.base.others:next())
+        elseif (s.base.currentTarget == nil) or (s.base.currentTarget:isValid() == false) or (s.base.currentTarget.enabled == false) then
+            settings.debugPrint("Current target is no longer valid. Finding a new one...")
+            -- we didn't change our target, but our current target is no longer valid.
+            -- try jumping to the next one.
+            if s.base.selectingActors then
+                newTarget(s.base.actors:next())
+                -- no more actors, so swap to non-actors.
+                if s.base.currentTarget == nil then
+                    newTarget(s.base.others:next())
+                    s.base.selectingActors = false
+                end
+            else
+                newTarget(s.base.others:next())
+                if s.base.currentTarget == nil then
+                    -- no more non-actors, so swap to actors.
+                    newTarget(s.base.actors:next())
+                    s.base.selectingActors = true
+                end
+            end
         end
 
-        if (base.currentTarget == nil) then
+        if (s.base.currentTarget == nil) then
+            -- we have no valid targets at all.
+            -- TODO: play a whoosh sound.
             stateMachine:replace(travelState)
             return
         end
 
-        -- If we stay paused, then targets should remain valid as we cycle through them.
-        if base.currentTarget:isValid() and base.currentTarget.enabled then
-            local lockPosition = lockOnPosition(base.currentTarget)
-            look(lockPosition, 0.3)
-            hexDofShader.u.uDepth = (lockPosition - camera.getPosition()):length()
-        else
-            settings.debugPrint("target no longer valid")
+        -- point camera to the active target.
+        local lockPosition = lockOnPosition(s.base.currentTarget)
+        look(lockPosition, 0.3)
+        hexDofShader.u.uDepth = (lockPosition - camera.getPosition()):length()
+
+        -- check if we are activating the target.
+        if activating then
+            -- activation doesn't work while paused!
             stateMachine:replace(travelState)
-            return
+            core.sendGlobalEvent(settings.MOD_NAME .. "onActivate", {
+                entity = s.base.currentTarget,
+                player = pself,
+            })
         end
     end
 })
@@ -537,19 +591,45 @@ travelState:set({
 
 preliminaryFreeLookState:set({
     name = "preliminaryFreeLookState",
-    onFrame = function(base, dt)
+    initialMode = nil,
+    initialFOV = nil,
+    timeInState = 0,
+    onEnter = function(base)
+        base.initialMode = camera.getMode()
+        base.initialFOV = camera.getFieldOfView()
+        camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
+        camera.setMode(camera.MODE.FirstPerson, true)
+        base.timeInState = 0
+        settings.debugPrint(base.name .. ".OnEnter() = " .. aux_util.deepToString(base, 3))
+    end,
+    onFrame = function(s, dt)
+        settings.debugPrint(s.name .. ".OnFrame() = " .. aux_util.deepToString(s.base, 3))
         if types.Actor.canMove(pself) == false then
             stateMachine:replace(travelState)
         end
-        -- we released the lock button
+
         if keyLock.fall then
             stateMachine:replace(lockSelectionState)
+        elseif keyLock.pressed == false then
+            -- it's possible that we miss the "fall" frame because we opened an inventory.
+            stateMachine:replace(travelState)
         end
+
         -- we started looking around
         if (keyForward.rise or keyBackward.rise or keyLeft.rise or keyRight.rise) then
             stateMachine:replace(freeLookState)
         end
-    end
+        -- if we're spending too long in this state, just go to freelook.
+        s.base.timeInState = s.base.timeInState + dt
+        if s.base.timeInState > 0.2 then
+            settings.debugPrint("held lock for too long (" .. tostring(s.base.timeInState) .. "s), entering freelook")
+            stateMachine:replace(freeLookState)
+        end
+    end,
+    onExit = function(base)
+        camera.setMode(base.initialMode, true)
+        camera.setFieldOfView(base.initialFOV)
+    end,
 })
 
 freeLookState:set({
@@ -575,7 +655,7 @@ freeLookState:set({
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
     end,
-    onFrame = function(base, dt)
+    onFrame = function(s, dt)
         -- this state is entered when the lock button is first pressed,
         -- and ends when the lock button is released.
         -- if movement buttons are newly pressed while in this state, we
@@ -612,23 +692,14 @@ local function onFrame(dt)
     keyBackward:update(dt)
     keyLeft:update(dt)
     keyRight:update(dt)
-    --keyJump:update(dt)
-    --keySneak:update(dt)
     handleSneak(dt)
     handleReach()
 
-
-    --[[
-    if input.actions ~= nil then
-        for k, v in pairs(input.actions) do
-            settings.debugPrint(k .. ": " .. aux_util.deepToString(v, 3))
-        end
-    end
-    ]]
-
     local currentState = stateMachine:current()
-    --settings.debugPrint("current state " .. aux_util.deepToString(currentState, 3))
     currentState.onFrame(currentState, dt)
+
+    -- triggers should be disabled after state handling, since they are once per frame.
+    handleActivate(dt)
 end
 
 local function onUpdate(dt)

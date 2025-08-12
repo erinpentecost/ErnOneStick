@@ -19,7 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local input = require('openmw.input')
 local settings = require("scripts.ErnOneStick.settings")
 
-local triggerThreshold = 0.3
+local maxThresholdForOff = 0.1
+local minThresholdForOn = 0.2
 
 local KeyFunctions = {}
 KeyFunctions.__index = KeyFunctions
@@ -50,9 +51,9 @@ function KeyFunctions.update(self, dt)
         end
     elseif type(newState) == "number" then
         self.analog = math.max(0, math.min(1, newState))
-        if newState > (1 - triggerThreshold) then
+        if newState >= minThresholdForOn then
             newBooleanState = true
-        elseif newState < triggerThreshold then
+        elseif newState <= maxThresholdForOff then
             newBooleanState = false
         else
             -- we are in a deadzone, so don't change pressed value
