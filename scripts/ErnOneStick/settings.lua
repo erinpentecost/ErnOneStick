@@ -103,6 +103,16 @@ local function initSettings()
                 min = 1,
                 max = 10,
             }
+        }, {
+            key = "volume",
+            name = "volume_name",
+            default = 1,
+            renderer = "number",
+            argument = {
+                integer = false,
+                min = 0,
+                max = 1,
+            }
         } }
     }
 

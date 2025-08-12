@@ -24,7 +24,14 @@ data="/wherevermymodsare/mods/ErnOneStick-main"
 content=ErnOneStick.omwscripts
 ```
 
-## Notes
+## Credits
 
-### Shaders
-Shaders are copied from [Max Yari's Dynamic camera effects and target lock](https://www.nexusmods.com/morrowind/mods/55327) mod, with permission.
+### Shader
+
+The shader is copied from [Max Yari's Dynamic camera effects and target lock](https://www.nexusmods.com/morrowind/mods/55327) mod, with permission.
+
+### Sounds
+
+- Wind 1 Loop by jasoneweber -- https://freesound.org/s/179110/ -- License: Attribution 3.0
+- ping.mp3 by jolup123 -- https://freesound.org/s/668790/ -- License: Creative Commons 0
+- Breath In by mooncubedesign -- https://freesound.org/s/319247/ -- License: Creative Commons 0

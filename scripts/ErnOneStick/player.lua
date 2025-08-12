@@ -54,7 +54,9 @@ end
 
 local onGround = types.Actor.isOnGround(pself)
 
--- reference: https://openmw.readthedocs.io/en/stable/reference/lua-scripting/openmw_self.html##(ActorControls)
+local function getSoundFilePath(file)
+    return "Sound\\" .. settings.MOD_NAME .. "\\" .. file
+end
 
 local function resetCamera()
     camera.setYaw(pself.rotation:getYaw())
@@ -444,12 +446,18 @@ lockSelectionState:set({
         if base.currentTarget == nil then
             settings.debugPrint("no valid targets!")
             -- we will exit this state on next frame.
-            -- TODO: play a "no targets" sound.
         else
             settings.debugPrint("Looking at " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
             hexDofShader.enabled = true
-            -- TODO: play a "locking on" sound.
+            core.sound.playSoundFile3d(getSoundFilePath("wind.mp3"), pself, {
+                volume = settings.volume * 0.2,
+                loop = true,
+            })
         end
+
+        core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
+            volume = settings.volume,
+        })
     end,
     onExit = function(base)
         core.sendGlobalEvent(settings.MOD_NAME .. "onUnpause")
@@ -458,6 +466,8 @@ lockSelectionState:set({
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
         resetCamera()
+
+        core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
 
         hexDofShader.enabled = false
     end,
@@ -477,11 +487,13 @@ lockSelectionState:set({
 
         local newTarget = function(new)
             if (new ~= nil) and (new ~= s.base.currentTarget) then
-                -- target changed
-                -- TODO: play a "target changed" sound.
                 s.base.currentTarget = new
                 settings.debugPrint("Looking at " ..
                     s.base.currentTarget.recordId .. " (" .. s.base.currentTarget.id .. ").")
+                settings.debugPrint("ping at volume " .. tostring(settings.volume))
+                core.sound.playSoundFile3d(getSoundFilePath("ping.mp3"), pself, {
+                    volume = settings.volume,
+                })
             end
         end
 
@@ -522,7 +534,6 @@ lockSelectionState:set({
 
         if (s.base.currentTarget == nil) then
             -- we have no valid targets at all.
-            -- TODO: play a whoosh sound.
             stateMachine:replace(travelState)
             return
         end
@@ -600,10 +611,10 @@ preliminaryFreeLookState:set({
         camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
         camera.setMode(camera.MODE.FirstPerson, true)
         base.timeInState = 0
-        settings.debugPrint(base.name .. ".OnEnter() = " .. aux_util.deepToString(base, 3))
+        --settings.debugPrint(base.name .. ".OnEnter() = " .. aux_util.deepToString(base, 3))
     end,
     onFrame = function(s, dt)
-        settings.debugPrint(s.name .. ".OnFrame() = " .. aux_util.deepToString(s.base, 3))
+        --settings.debugPrint(s.name .. ".OnFrame() = " .. aux_util.deepToString(s.base, 3))
         if types.Actor.canMove(pself) == false then
             stateMachine:replace(travelState)
         end

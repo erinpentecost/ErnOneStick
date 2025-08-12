@@ -17,6 +17,7 @@ lookSensitivityVertical_name: "Look Sensitivity (Vertical)"
 lookSensitivityHorizontal_name: "Look Sensitivity (Horizontal)"
 invertLookVertical_name: "Invert Vertical Look Direction"
 freeLookZoom_name: "Freelook Zoom"
+volume_name: "Sound Effects Volume"
 
 disable_name: "Disabled Mod"
 disable_description: "Turn the mod off. You will need to reload lua afterward."
