@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local settings = require("scripts.ErnOneStick.settings")
 local state = require("scripts.ErnOneStick.state")
 local radians = require("scripts.ErnOneStick.radians")
+local targetui = require("scripts.ErnOneStick.targetui")
 local keytrack = require("scripts.ErnOneStick.keytrack")
 local targets = require("scripts.ErnOneStick.targets")
 local shaderUtils = require("scripts.ErnOneStick.shader_utils")
@@ -390,6 +391,10 @@ lockSelectionState:set({
                 if e.id == pself.id then
                     return false
                 end
+                if e.type.records[e.recordId].name == "" then
+                    -- only instances with names can be targetted
+                    return false
+                end
                 -- use an extra-long reach if we have weapons or spells ready.
                 local actorReach = reach
                 if types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing then
@@ -427,6 +432,10 @@ lockSelectionState:set({
                 if e.id == pself.id then
                     return false
                 end
+                if e.type.records[e.recordId].name == "" then
+                    -- only instances with names can be targetted
+                    return false
+                end
                 -- only dead actors allowed
                 if isActor(e) and (types.Actor.isDead(e) == false) then
                     return false
@@ -453,6 +462,7 @@ lockSelectionState:set({
                 volume = settings.volume * 0.2,
                 loop = true,
             })
+            targetui.showTargetUI(base.currentTarget)
         end
 
         core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
@@ -470,6 +480,7 @@ lockSelectionState:set({
         core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
 
         hexDofShader.enabled = false
+        targetui.destroy()
     end,
     onFrame = function(s, dt)
         if keyLock.rise then
@@ -491,6 +502,8 @@ lockSelectionState:set({
                 settings.debugPrint("Looking at " ..
                     s.base.currentTarget.recordId .. " (" .. s.base.currentTarget.id .. ").")
                 settings.debugPrint("ping at volume " .. tostring(settings.volume))
+
+                targetui.showTargetUI(s.base.currentTarget)
                 core.sound.playSoundFile3d(getSoundFilePath("ping.mp3"), pself, {
                     volume = settings.volume,
                 })
