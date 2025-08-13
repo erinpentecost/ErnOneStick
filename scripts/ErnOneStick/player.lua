@@ -55,8 +55,6 @@ if settings.invertLookVertical then
     invertLook = -1
 end
 
-local onGround = types.Actor.isOnGround(pself)
-
 local function getSoundFilePath(file)
     return "Sound\\" .. settings.MOD_NAME .. "\\" .. file
 end
@@ -108,24 +106,38 @@ local function trackPitch(targetPitch, t)
 end
 
 local function trackPitchFromVector(worldVector, t)
-    -- since we lerp first, then clamp, we'll hit the clamped values quick if the
-    -- difference is very high. that's good.
-    local angles = targetAngles(worldVector, t)
+    local targetPitch = 0
 
-    -- clamp maximum changes
-    local maxPitchCorrection = 0.3
-    if angles.pitch > 0 then
-        angles.pitch = math.min(maxPitchCorrection, angles.pitch)
+    -- TODO: lerp is very wrong for this.
+    -- TODO: solve motion sickness somehow
+
+    local minClamp = 0.01
+    local maxTarget = targetAngles(worldVector, 1)
+    if maxTarget.pitch > 0 and maxTarget.pitch < minClamp then
+        targetPitch = radians.lerpAngle(maxTarget.pitch, 0, 0.8)
+    elseif maxTarget.pitch < 0 and maxTarget.pitch > -1 * minClamp then
+        targetPitch = radians.lerpAngle(maxTarget.pitch, 0, 0.8)
     else
-        angles.pitch = math.max(-1 * maxPitchCorrection, angles.pitch)
+        -- since we lerp first, then clamp, we'll hit the clamped values quick if the
+        -- difference is very high. that's good.
+        local angles = targetAngles(worldVector, t)
+        -- clamp maximum changes
+        targetPitch = angles.pitch
     end
 
-    if radians.anglesAlmostEqual(pself.rotation:getPitch(), angles.pitch) then
+    local maxPitchCorrection = 0.3
+    if targetPitch > 0 then
+        targetPitch = math.min(maxPitchCorrection, targetPitch)
+    else
+        targetPitch = math.max(-1 * maxPitchCorrection, targetPitch)
+    end
+
+    if radians.anglesAlmostEqual(pself.rotation:getPitch(), targetPitch) then
         return
     end
 
-    camera.setPitch(angles.pitch)
-    pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), angles.pitch)
+    camera.setPitch(targetPitch)
+    pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), targetPitch)
 end
 
 local function track(worldVector, t)
@@ -453,11 +465,17 @@ lockSelectionState:set({
                     return true
                 end
 
-                if (dist <= 1000) and (types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing) then
-                    -- if we have magic or a weapon out, extend the distance but add a LOS check.
-                    return hasLOS(playerHead, e)
+                -- max distance
+                if (dist >= 1000) then
+                    return false
                 end
-                return false
+
+                -- reduce max distance to activation distance if we don't have hands out
+                if (dist >= core.getGMST("iMaxActivateDist")) and (types.Actor.getStance(pself) == types.Actor.STANCE.Nothing) then
+                    return false
+                end
+
+                return hasLOS(playerHead, e)
             end)
 
         local others = {}
@@ -635,16 +653,19 @@ lockSelectionState:set({
 travelState:set({
     name = "travelState",
     spotWeShouldLookAt = nil,
+    onGround = false,
     onEnter = function(base)
         settings.debugPrint("enter state: travel")
         camera.setMode(camera.MODE.FirstPerson, true)
         pself.controls.sideMovement = 0
         base.spotWeShouldLookAt = nil
+        base.onGround = types.Actor.isOnGround(pself)
     end,
     onExit = function(base)
         pself.controls.movement = 0
         pself.controls.run = false
         pself.controls.yawChange = 0
+        pself.controls.pitchChange = 0
     end,
     onFrame = function(s, dt)
         if keyLock.rise and types.Actor.canMove(pself) then
@@ -656,11 +677,13 @@ travelState:set({
         -- Reset camera to foward if we are on the ground.
         -- Don't do this when swimming or levitating so the player
         -- can point up or down.
-        if onGround and (s.base.spotWeShouldLookAt ~= nil) then
+        if s.base.onGround and (s.base.spotWeShouldLookAt ~= nil) then
             -- TODO: raycast down from a foot in front of the camera
             -- so I can aim up or down when on stairs.
             --trackPitch(0, 0.1)
-            trackPitchFromVector(s.base.spotWeShouldLookAt, 1)
+            trackPitchFromVector(s.base.spotWeShouldLookAt, 0.05)
+        else
+            pself.controls.pitchChange = 0
         end
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
@@ -681,6 +704,12 @@ travelState:set({
         end
     end,
     onUpdate = function(s, dt)
+        s.base.onGround = types.Actor.isOnGround(pself)
+        if s.base.onGround == false then
+            s.base.spotWeShouldLookAt = nil
+            return
+        end
+
         local zHalfHeight = pself:getBoundingBox().halfSize.z
         -- positive Z is up.
 
@@ -697,11 +726,10 @@ travelState:set({
                 radius = 1
             }
         )
-        local firstSpot = nil
         if castResult.hit then
             -- we hit the ground.
             -- maybe add  camera.getFirstPersonOffset()
-            firstSpot = castResult.hitPos +
+            s.base.spotWeShouldLookAt = castResult.hitPos +
                 util.vector3(0.0, 0.0, camera.getFirstPersonOffset().z + (2 * zHalfHeight))
 
             --[[settings.debugPrint("hit something at z=" ..
@@ -710,36 +738,6 @@ travelState:set({
                 string.format("%.3f", camera.getPosition().z) ..
                 ". lookSpotZ=" .. string.format("%.3f", s.base.spotWeShouldLookAt.z))]]
         end
-
-        -- do it again, but further out.
-        leadingPosition = camera.getPosition() + (facing * 10 * pself:getBoundingBox().halfSize.y)
-
-        downward = util.vector3(leadingPosition.x, leadingPosition.y,
-            leadingPosition.z - (10 * zHalfHeight))
-        -- cast down from leading position to ground.
-        castResult = nearby.castRay(leadingPosition,
-            downward,
-            {
-                collisionType = nearby.COLLISION_TYPE.HeightMap + nearby.COLLISION_TYPE.World,
-                radius = 1
-            }
-        )
-        local secondSpot = nil
-        if castResult.hit then
-            -- we hit the ground.
-            -- maybe add  camera.getFirstPersonOffset()
-            secondSpot = castResult.hitPos +
-                util.vector3(0.0, 0.0, camera.getFirstPersonOffset().z + (2 * zHalfHeight))
-        end
-
-        -- do it again, but further out, and lerp
-        if secondSpot == nil then
-            s.base.spotWeShouldLookAt = firstSpot
-        end
-        if secondSpot ~= nil and firstSpot ~= nil then
-            s.base.spotWeShouldLookAt = firstSpot
-        end
-        -- TODO: finish
     end
 })
 
@@ -754,6 +752,8 @@ preliminaryFreeLookState:set({
         camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
         camera.setMode(camera.MODE.FirstPerson, true)
         base.timeInState = 0
+        pself.controls.yawChange = 0
+        pself.controls.pitchChange = 0
         --settings.debugPrint(base.name .. ".OnEnter() = " .. aux_util.deepToString(base, 3))
     end,
     onFrame = function(s, dt)
@@ -862,7 +862,6 @@ end
 
 local function onUpdate(dt)
     if dt == 0 then return end
-    onGround = types.Actor.isOnGround(pself)
     shaderUtils.HandleShaders(dt)
 
     local currentState = stateMachine:current()
