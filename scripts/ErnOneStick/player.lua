@@ -110,6 +110,9 @@ local function trackPitchFromVector(worldVector, t)
 
     -- TODO: lerp is very wrong for this.
     -- TODO: solve motion sickness somehow
+    --
+    -- TODO: resting pitch might not be 0 anymore! that makes
+    -- the minClamp not behave correctly.
 
     local minClamp = 0.01
     local maxTarget = targetAngles(worldVector, 1)
@@ -681,10 +684,11 @@ travelState:set({
             -- TODO: raycast down from a foot in front of the camera
             -- so I can aim up or down when on stairs.
             --trackPitch(0, 0.1)
-            trackPitchFromVector(s.base.spotWeShouldLookAt, 0.05)
+            trackPitchFromVector(s.base.spotWeShouldLookAt, 0.1)
         else
             pself.controls.pitchChange = 0
         end
+
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
             pself.controls.run = keyForward.analog > runThreshold
