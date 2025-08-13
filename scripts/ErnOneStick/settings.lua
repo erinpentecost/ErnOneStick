@@ -62,7 +62,9 @@ local function initSettings()
             key = "lockButton",
             name = "lockButton_name",
             description = "lockButton_description",
-            default = "y",
+            -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
+            --default = "RightStick",
+            -- this doesn't actually work
             renderer = "inputBinding",
             argument = {
                 key = MOD_NAME .. "LockButton",
@@ -113,6 +115,12 @@ local function initSettings()
                 min = 0,
                 max = 1,
             }
+        }, {
+            key = "runWhileLockedOn",
+            name = "runWhileLockedOn_name",
+            description = "runWhileLockedOn_description",
+            default = true,
+            renderer = "checkbox",
         } }
     }
 
@@ -166,6 +174,8 @@ local settingsContainer = {
     debugMode = debugMode,
     debugPrint = debugPrint,
     disable = disable,
+
+    SettingsInput = SettingsInput,
 }
 setmetatable(settingsContainer, lookupFuncTable)
 

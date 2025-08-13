@@ -11,7 +11,7 @@ modSettingsAdminTitle: "Admin"
 modSettingsAdminDesc: "Administrative settings."
 
 lockButton_name: "Lock-On Button"
-lockButton_description: "The key used to trigger lock-on."
+lockButton_description: "The key used to trigger lock-on. Click N/A and then the button you want to assign."
 
 lookSensitivityVertical_name: "Look Sensitivity (Vertical)"
 lookSensitivityHorizontal_name: "Look Sensitivity (Horizontal)"
@@ -19,8 +19,11 @@ invertLookVertical_name: "Invert Vertical Look Direction"
 freeLookZoom_name: "Freelook Zoom"
 volume_name: "Sound Effects Volume"
 
-disable_name: "Disabled Mod"
-disable_description: "Turn the mod off. You will need to reload lua afterward."
+runWhileLockedOn_name: "Can Run While Locked On"
+runWhileLockedOn_description: "Set this to false if you have a D-Pad and are running out of Fatigue often during combat."
+
+disable_name: "Disable Mod"
+disable_description: "Turn the mod off. You will need to reload lua (or save and then reload) afterward."
 
 debugMode_name: "Debug Mode"
 debugMode_description: "Turn on verbose logging."

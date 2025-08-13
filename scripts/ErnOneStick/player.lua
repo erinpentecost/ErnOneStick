@@ -44,6 +44,8 @@ if settings.disable() then
     return
 end
 
+settings.debugPrint("lockButton control is " .. tostring(settings.lockButton))
+
 controls.overrideMovementControls(true)
 cameraInterface.disableModeControl(settings.MOD_NAME)
 
@@ -105,6 +107,27 @@ local function trackPitch(targetPitch, t)
     pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), targetPitch)
 end
 
+local function trackPitchFromVector(worldVector, t)
+    -- since we lerp first, then clamp, we'll hit the clamped values quick if the
+    -- difference is very high. that's good.
+    local angles = targetAngles(worldVector, t)
+
+    -- clamp maximum changes
+    local maxPitchCorrection = 0.3
+    if angles.pitch > 0 then
+        angles.pitch = math.min(maxPitchCorrection, angles.pitch)
+    else
+        angles.pitch = math.max(-1 * maxPitchCorrection, angles.pitch)
+    end
+
+    if radians.anglesAlmostEqual(pself.rotation:getPitch(), angles.pitch) then
+        return
+    end
+
+    camera.setPitch(angles.pitch)
+    pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), angles.pitch)
+end
+
 local function track(worldVector, t)
     local angles = targetAngles(worldVector, t)
 
@@ -156,7 +179,13 @@ local function lockOnPosition(entity)
     -- part of the model.
     local pos = entity:getBoundingBox().center
     if isActor(entity) then
-        pos = pos + util.vector3(0, 0, (entity:getBoundingBox().halfSize.z) * 0.7)
+        local sizes = entity:getBoundingBox().halfSize
+        -- if the actor is tall, offset so we are hopefully looking at their face.
+        -- we shouldn't just point up. we should rotate this accurately for when actors
+        -- are on the ground.
+        if sizes.z * 0.8 > math.max(sizes.x, sizes.y) then
+            pos = pos + entity.rotation:apply(util.vector3(0, 0, (sizes.z) * 0.7))
+        end
     end
     return pos
 end
@@ -179,8 +208,6 @@ input.registerAction {
     key = settings.MOD_NAME .. "LockButton",
     type = input.ACTION_TYPE.Boolean,
     l10n = settings.MOD_NAME,
-    name = 'lockButton_name',
-    description = 'lockButton_desc',
     defaultValue = false,
 }
 
@@ -258,10 +285,12 @@ uiState:set({
     onExit = function(base)
         controls.overrideMovementControls(true)
     end,
-    onFrame = function(state, dt)
+    onFrame = function(s, dt)
         if uiInterface.getMode() == nil then
             stateMachine:pop()
         end
+    end,
+    onUpdate = function(s, dt)
     end
 })
 
@@ -287,22 +316,31 @@ lockedOnState:set({
             stateMachine:replace(travelState)
             return
         end
+        local shouldRun = false
         track(lockOnPosition(s.base.target), 0.6)
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
+            shouldRun = shouldRun or (keyForward.analog > runThreshold)
         elseif keyBackward.pressed then
             pself.controls.movement = -1 * keyBackward.analog
+            shouldRun = shouldRun or (keyBackward.analog > runThreshold)
         else
             pself.controls.movement = 0
         end
         if keyLeft.pressed then
             pself.controls.sideMovement = -1 * keyLeft.analog
+            shouldRun = shouldRun or (keyLeft.analog > runThreshold)
         elseif keyRight.pressed then
             pself.controls.sideMovement = keyRight.analog
+            shouldRun = shouldRun or (keyRight.analog > runThreshold)
         else
             pself.controls.sideMovement = 0
         end
+
+        pself.controls.run = shouldRun and settings.runWhileLockedOn
     end,
+    onUpdate = function(s, dt)
+    end
 })
 
 local function hasLOS(playerHead, entity)
@@ -359,6 +397,15 @@ local function hasLOS(playerHead, entity)
     return false
 end
 
+local function getDistance(playerHead, entity)
+    -- dist is a little closer because activation distance should be based
+    -- on the closest face of the box, not on the center of the box.
+    -- just fudge it by taking max of x,y,z box halfsize.
+    local boxSize = entity:getBoundingBox().halfSize
+    return (playerHead - entity:getBoundingBox().center):length() -
+        math.max(boxSize.x, boxSize.y, boxSize.z)
+end
+
 lockSelectionState:set({
     name = "lockSelectionState",
     selectingActors = true,
@@ -395,15 +442,22 @@ lockSelectionState:set({
                     -- only instances with names can be targetted
                     return false
                 end
-                -- use an extra-long reach if we have weapons or spells ready.
-                local actorReach = reach
-                if types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing then
-                    actorReach = 1000
+
+                -- dist is a little closer because activation distance should be based
+                -- on the closest face of the box, not on the center of the box.
+                -- just fudge it by taking max of x,y,z box halfsize.
+                local dist = getDistance(playerHead, e)
+                -- if the actor is very close, ignore LOS check.
+                -- we were getting problems with mudcrabs (horrible creatures).
+                if dist <= core.getGMST("iMaxActivateDist") / 2 then
+                    return true
                 end
-                if (playerHead - e:getBoundingBox().center):length() > actorReach then
-                    return false
+
+                if (dist <= 1000) and (types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing) then
+                    -- if we have magic or a weapon out, extend the distance but add a LOS check.
+                    return hasLOS(playerHead, e)
                 end
-                return hasLOS(playerHead, e)
+                return false
             end)
 
         local others = {}
@@ -440,7 +494,8 @@ lockSelectionState:set({
                 if isActor(e) and (types.Actor.isDead(e) == false) then
                     return false
                 end
-                if (playerHead - e:getBoundingBox().center):length() > reach then
+
+                if getDistance(playerHead, e) > reach then
                     return false
                 end
                 return hasLOS(playerHead, e)
@@ -558,21 +613,33 @@ lockSelectionState:set({
 
         -- check if we are activating the target.
         if activating then
-            -- activation doesn't work while paused!
-            stateMachine:replace(travelState)
-            core.sendGlobalEvent(settings.MOD_NAME .. "onActivate", {
-                entity = s.base.currentTarget,
-                player = pself,
-            })
+            if isActor(s.base.currentTarget) and (getDistance(camera.getPosition(), s.base.currentTarget) > core.getGMST("iMaxActivateDist")) then
+                settings.debugPrint("Actor target is too far away to activate.")
+                -- TODO: play a negative sound
+            else
+                -- activation doesn't work while paused!
+                -- so we need to drop out of this state and into a non-paused state.
+                stateMachine:replace(travelState)
+                core.sendGlobalEvent(settings.MOD_NAME .. "onActivate", {
+                    entity = s.base.currentTarget,
+                    player = pself,
+                })
+                -- TODO: play an item activation sound if this is not an actor.
+            end
         end
+    end,
+    onUpdate = function(s, dt)
     end
 })
 
 travelState:set({
     name = "travelState",
+    spotWeShouldLookAt = nil,
     onEnter = function(base)
         settings.debugPrint("enter state: travel")
         camera.setMode(camera.MODE.FirstPerson, true)
+        pself.controls.sideMovement = 0
+        base.spotWeShouldLookAt = nil
     end,
     onExit = function(base)
         pself.controls.movement = 0
@@ -585,13 +652,15 @@ travelState:set({
             stateMachine:replace(preliminaryFreeLookState)
             return
         end
+        pself.controls.sideMovement = 0
         -- Reset camera to foward if we are on the ground.
         -- Don't do this when swimming or levitating so the player
         -- can point up or down.
-        if onGround then
+        if onGround and (s.base.spotWeShouldLookAt ~= nil) then
             -- TODO: raycast down from a foot in front of the camera
             -- so I can aim up or down when on stairs.
-            trackPitch(0, 0.1)
+            --trackPitch(0, 0.1)
+            trackPitchFromVector(s.base.spotWeShouldLookAt, 1)
         end
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
@@ -610,6 +679,67 @@ travelState:set({
         else
             pself.controls.yawChange = 0
         end
+    end,
+    onUpdate = function(s, dt)
+        local zHalfHeight = pself:getBoundingBox().halfSize.z
+        -- positive Z is up.
+
+        local facing = pself.rotation:apply(util.vector3(0, 1, 0)):normalize()
+        local leadingPosition = camera.getPosition() + (facing * 2 * pself:getBoundingBox().halfSize.y)
+
+        local downward = util.vector3(leadingPosition.x, leadingPosition.y,
+            leadingPosition.z - (10 * zHalfHeight))
+        -- cast down from leading position to ground.
+        local castResult = nearby.castRay(leadingPosition,
+            downward,
+            {
+                collisionType = nearby.COLLISION_TYPE.HeightMap + nearby.COLLISION_TYPE.World,
+                radius = 1
+            }
+        )
+        local firstSpot = nil
+        if castResult.hit then
+            -- we hit the ground.
+            -- maybe add  camera.getFirstPersonOffset()
+            firstSpot = castResult.hitPos +
+                util.vector3(0.0, 0.0, camera.getFirstPersonOffset().z + (2 * zHalfHeight))
+
+            --[[settings.debugPrint("hit something at z=" ..
+                string.format("%.3f", castResult.hitPos.z) ..
+                ". cameraZ=" ..
+                string.format("%.3f", camera.getPosition().z) ..
+                ". lookSpotZ=" .. string.format("%.3f", s.base.spotWeShouldLookAt.z))]]
+        end
+
+        -- do it again, but further out.
+        leadingPosition = camera.getPosition() + (facing * 10 * pself:getBoundingBox().halfSize.y)
+
+        downward = util.vector3(leadingPosition.x, leadingPosition.y,
+            leadingPosition.z - (10 * zHalfHeight))
+        -- cast down from leading position to ground.
+        castResult = nearby.castRay(leadingPosition,
+            downward,
+            {
+                collisionType = nearby.COLLISION_TYPE.HeightMap + nearby.COLLISION_TYPE.World,
+                radius = 1
+            }
+        )
+        local secondSpot = nil
+        if castResult.hit then
+            -- we hit the ground.
+            -- maybe add  camera.getFirstPersonOffset()
+            secondSpot = castResult.hitPos +
+                util.vector3(0.0, 0.0, camera.getFirstPersonOffset().z + (2 * zHalfHeight))
+        end
+
+        -- do it again, but further out, and lerp
+        if secondSpot == nil then
+            s.base.spotWeShouldLookAt = firstSpot
+        end
+        if secondSpot ~= nil and firstSpot ~= nil then
+            s.base.spotWeShouldLookAt = firstSpot
+        end
+        -- TODO: finish
     end
 })
 
@@ -654,6 +784,8 @@ preliminaryFreeLookState:set({
         camera.setMode(base.initialMode, true)
         camera.setFieldOfView(base.initialFOV)
     end,
+    onUpdate = function(s, dt)
+    end
 })
 
 freeLookState:set({
@@ -705,6 +837,8 @@ freeLookState:set({
         else
             pself.controls.yawChange = 0
         end
+    end,
+    onUpdate = function(s, dt)
     end
 })
 
@@ -730,6 +864,9 @@ local function onUpdate(dt)
     if dt == 0 then return end
     onGround = types.Actor.isOnGround(pself)
     shaderUtils.HandleShaders(dt)
+
+    local currentState = stateMachine:current()
+    currentState.onUpdate(currentState, dt)
 end
 
 local function UiModeChanged(data)
