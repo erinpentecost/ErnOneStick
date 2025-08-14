@@ -71,6 +71,11 @@ local function inBox(position, box)
         and math.abs(normalized.z) <= 1
 end
 
+local function inWorldSpace(entity)
+    -- TODO: this should also return false if the entity is outside and we are inside and vice-versa
+    return (entity ~= nil) and entity:isValid() and entity.enabled and (entity.parentContainer == nil)
+end
+
 local function targetAngles(worldVector, t)
     -- This swings the viewport toward worldVector
     if t == nil then
@@ -96,44 +101,6 @@ local function trackPitch(targetPitch, t)
         t = 1
     end
     targetPitch = radians.lerpAngle(pself.rotation:getPitch(), targetPitch, t)
-
-    if radians.anglesAlmostEqual(pself.rotation:getPitch(), targetPitch) then
-        return
-    end
-
-    camera.setPitch(targetPitch)
-    pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), targetPitch)
-end
-
-local function trackPitchFromVector(worldVector, t)
-    local targetPitch = 0
-
-    -- TODO: lerp is very wrong for this.
-    -- TODO: solve motion sickness somehow
-    --
-    -- TODO: resting pitch might not be 0 anymore! that makes
-    -- the minClamp not behave correctly.
-
-    local minClamp = 0.01
-    local maxTarget = targetAngles(worldVector, 1)
-    if maxTarget.pitch > 0 and maxTarget.pitch < minClamp then
-        targetPitch = radians.lerpAngle(maxTarget.pitch, 0, 0.8)
-    elseif maxTarget.pitch < 0 and maxTarget.pitch > -1 * minClamp then
-        targetPitch = radians.lerpAngle(maxTarget.pitch, 0, 0.8)
-    else
-        -- since we lerp first, then clamp, we'll hit the clamped values quick if the
-        -- difference is very high. that's good.
-        local angles = targetAngles(worldVector, t)
-        -- clamp maximum changes
-        targetPitch = angles.pitch
-    end
-
-    local maxPitchCorrection = 0.3
-    if targetPitch > 0 then
-        targetPitch = math.min(maxPitchCorrection, targetPitch)
-    else
-        targetPitch = math.max(-1 * maxPitchCorrection, targetPitch)
-    end
 
     if radians.anglesAlmostEqual(pself.rotation:getPitch(), targetPitch) then
         return
@@ -245,10 +212,6 @@ end)
 local keySneak = keytrack.NewKey("sneak",
     function(dt) return input.getBooleanActionValue("Sneak") end)
 
---[[
-local keyActivate = keytrack.NewKey("activate",
-    function(dt) return input.getBooleanActionValue("Activate") end)
-    ]]
 
 -- Jump is a trigger, not an action.
 input.registerTriggerHandler("Jump", async:callback(function() pself.controls.jump = true end))
@@ -257,6 +220,10 @@ local activating = false
 input.registerTriggerHandler("Activate", async:callback(function() activating = true end))
 local function handleActivate(dt)
     activating = false
+end
+
+for k, v in pairs(input.triggers) do
+    settings.debugPrint(k .. "-" .. v.name)
 end
 
 -- Have to recreate sneak toggle.
@@ -312,19 +279,27 @@ uiState:set({
 lockedOnState:set({
     name = "lockedOnState",
     target = nil,
+    lookPosition = util.vector3(0, 0, 0),
     onEnter = function(base)
         pself.controls.movement = 0
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
         pself.controls.run = false
-        if base.target == nil then
+        if inWorldSpace(base.target) == false then
             error("no target for locked-on state")
+            base.lookPosition = util.vector3(0, 0, 0)
+        else
+            base.lookPosition = lockOnPosition(base.target)
         end
     end,
     onExit = function(base)
         resetCamera()
         pself.controls.movement = 0
         pself.controls.sideMovement = 0
+        core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
+            volume = settings.volume,
+        })
+        core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
     end,
     onFrame = function(s, dt)
         if keyLock.rise then
@@ -332,7 +307,7 @@ lockedOnState:set({
             return
         end
         local shouldRun = false
-        track(lockOnPosition(s.base.target), 0.6)
+        track(s.base.lookPosition, 0.6)
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
             shouldRun = shouldRun or (keyForward.analog > runThreshold)
@@ -355,6 +330,12 @@ lockedOnState:set({
         pself.controls.run = shouldRun and settings.runWhileLockedOn
     end,
     onUpdate = function(s, dt)
+        if inWorldSpace(s.base.target) == false then
+            settings.debugPrint("target not valid")
+            stateMachine:replace(travelState)
+            return
+        end
+        s.base.lookPosition = lockOnPosition(s.base.target)
     end
 })
 
@@ -532,7 +513,8 @@ lockSelectionState:set({
             settings.debugPrint("no valid targets!")
             -- we will exit this state on next frame.
         else
-            settings.debugPrint("Looking at " .. base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
+            settings.debugPrint("Started looking at " ..
+                base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
             hexDofShader.enabled = true
             core.sound.playSoundFile3d(getSoundFilePath("wind.mp3"), pself, {
                 volume = settings.volume * 0.2,
@@ -553,7 +535,7 @@ lockSelectionState:set({
         pself.controls.pitchChange = 0
         resetCamera()
 
-        core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
+        --core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
 
         hexDofShader.enabled = false
         targetui.destroy()
@@ -566,7 +548,9 @@ lockSelectionState:set({
                 lockedOnState.base.target = s.base.currentTarget
                 stateMachine:replace(lockedOnState)
             else
+                print("No target on keyLock rise, quitting.")
                 -- no target, so move to travel state.
+                core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
                 stateMachine:replace(travelState)
             end
             return
@@ -577,7 +561,6 @@ lockSelectionState:set({
                 s.base.currentTarget = new
                 settings.debugPrint("Looking at " ..
                     s.base.currentTarget.recordId .. " (" .. s.base.currentTarget.id .. ").")
-                settings.debugPrint("ping at volume " .. tostring(settings.volume))
 
                 targetui.showTargetUI(s.base.currentTarget)
                 core.sound.playSoundFile3d(getSoundFilePath("ping.mp3"), pself, {
@@ -600,8 +583,9 @@ lockSelectionState:set({
         elseif keyRight.rise then
             s.base.selectingActors = false
             newTarget(s.base.others:next())
-        elseif (s.base.currentTarget == nil) or (s.base.currentTarget:isValid() == false) or (s.base.currentTarget.enabled == false) then
-            settings.debugPrint("Current target is no longer valid. Finding a new one...")
+        elseif inWorldSpace(s.base.currentTarget) == false then
+            --settings.debugPrint("Current target (" ..
+            --    aux_util.deepToString(s.base.currentTarget, 2) .. ") is no longer valid. Finding a new one...")
             -- we didn't change our target, but our current target is no longer valid.
             -- try jumping to the next one.
             if s.base.selectingActors then
@@ -621,8 +605,13 @@ lockSelectionState:set({
             end
         end
 
-        if (s.base.currentTarget == nil) then
+        if inWorldSpace(s.base.currentTarget) == false then
             -- we have no valid targets at all.
+            core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
+                volume = settings.volume,
+            })
+            core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
+            print("No valid target....")
             stateMachine:replace(travelState)
             return
         end
@@ -633,35 +622,45 @@ lockSelectionState:set({
         hexDofShader.u.uDepth = (lockPosition - camera.getPosition()):length()
 
         -- check if we are activating the target.
+        -- this will always stop target selection mode.
         if activating then
+            core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
+
             if isActor(s.base.currentTarget) and (getDistance(camera.getPosition(), s.base.currentTarget) > core.getGMST("iMaxActivateDist")) then
                 settings.debugPrint("Actor target is too far away to activate.")
-                -- TODO: play a negative sound
+                core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
+                    volume = settings.volume,
+                })
             else
                 -- activation doesn't work while paused!
                 -- so we need to drop out of this state and into a non-paused state.
-                stateMachine:replace(travelState)
+                core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
                 core.sendGlobalEvent(settings.MOD_NAME .. "onActivate", {
                     entity = s.base.currentTarget,
                     player = pself,
                 })
-                -- TODO: play an item activation sound if this is not an actor.
             end
+            stateMachine:replace(travelState)
         end
     end,
     onUpdate = function(s, dt)
     end
 })
 
+-- easeInOutSine is a smoothing function. t ranges from 0 to 1.
+local function easeInOutSine(t)
+    return -1 * (math.cos(math.pi * t) - 1) / 2
+end
+
 travelState:set({
     name = "travelState",
-    spotWeShouldLookAt = nil,
+    desiredPitch = 0,
     onGround = false,
     onEnter = function(base)
         settings.debugPrint("enter state: travel")
         camera.setMode(camera.MODE.FirstPerson, true)
         pself.controls.sideMovement = 0
-        base.spotWeShouldLookAt = nil
+        base.desiredPitch = 0
         base.onGround = types.Actor.isOnGround(pself)
     end,
     onExit = function(base)
@@ -680,11 +679,8 @@ travelState:set({
         -- Reset camera to foward if we are on the ground.
         -- Don't do this when swimming or levitating so the player
         -- can point up or down.
-        if s.base.onGround and (s.base.spotWeShouldLookAt ~= nil) then
-            -- TODO: raycast down from a foot in front of the camera
-            -- so I can aim up or down when on stairs.
-            --trackPitch(0, 0.1)
-            trackPitchFromVector(s.base.spotWeShouldLookAt, 0.1)
+        if s.base.onGround then
+            trackPitch(s.base.desiredPitch, 0.1)
         else
             pself.controls.pitchChange = 0
         end
@@ -710,7 +706,6 @@ travelState:set({
     onUpdate = function(s, dt)
         s.base.onGround = types.Actor.isOnGround(pself)
         if s.base.onGround == false then
-            s.base.spotWeShouldLookAt = nil
             return
         end
 
@@ -718,7 +713,7 @@ travelState:set({
         -- positive Z is up.
 
         local facing = pself.rotation:apply(util.vector3(0, 1, 0)):normalize()
-        local leadingPosition = camera.getPosition() + (facing * 2 * pself:getBoundingBox().halfSize.y)
+        local leadingPosition = camera.getPosition() + (facing * 3 * pself:getBoundingBox().halfSize.y)
 
         local downward = util.vector3(leadingPosition.x, leadingPosition.y,
             leadingPosition.z - (10 * zHalfHeight))
@@ -726,14 +721,18 @@ travelState:set({
         local castResult = nearby.castRay(leadingPosition,
             downward,
             {
+                -- We need World to see stairs, but this also triggers on tables (which is bad).
+                -- This doesn't hit docks or boats, though, so on those we stare down if the
+                -- bottom of the water is close enough. Can't win them all, I guess.
                 collisionType = nearby.COLLISION_TYPE.HeightMap + nearby.COLLISION_TYPE.World,
                 radius = 1
             }
         )
+
         if castResult.hit then
             -- we hit the ground.
             -- maybe add  camera.getFirstPersonOffset()
-            s.base.spotWeShouldLookAt = castResult.hitPos +
+            local spotOnGround = castResult.hitPos +
                 util.vector3(0.0, 0.0, camera.getFirstPersonOffset().z + (2 * zHalfHeight))
 
             --[[settings.debugPrint("hit something at z=" ..
@@ -741,6 +740,40 @@ travelState:set({
                 ". cameraZ=" ..
                 string.format("%.3f", camera.getPosition().z) ..
                 ". lookSpotZ=" .. string.format("%.3f", s.base.spotWeShouldLookAt.z))]]
+
+
+            local direction = (spotOnGround - camera.getPosition()):normalize()
+            -- rawTargetPitch is the unclamped, unlerped desired pitch.
+            local rawTarget = util.normalizeAngle(-math.asin(direction.z))
+
+            local targetPitch = rawTarget
+
+            -- clamp this so we never look straight up or straight down.
+            local maxPitchCorrection = 0.4
+            local upDown = -1
+            if targetPitch > 0 then
+                targetPitch = math.min(maxPitchCorrection, targetPitch)
+                upDown = 1
+            else
+                targetPitch = math.max(-1 * maxPitchCorrection, targetPitch)
+                upDown = -1
+            end
+
+            -- Make a deadzone around 0
+            local minPitch = 0.05
+            if targetPitch > minPitch then
+                targetPitch = targetPitch - minPitch
+            elseif targetPitch < -1 * minPitch then
+                targetPitch = targetPitch + minPitch
+            end
+
+            -- swingToMax is the linear progress of zero pitch to max pitch
+            local swingToMax = math.abs(targetPitch) / maxPitchCorrection
+
+            s.base.desiredPitch = easeInOutSine(swingToMax) * maxPitchCorrection * upDown
+        else
+            -- we didn't hit anything, so look straight ahead.
+            s.base.desiredPitch = 0
         end
     end
 })

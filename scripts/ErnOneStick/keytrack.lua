@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 local input = require('openmw.input')
 local settings = require("scripts.ErnOneStick.settings")
+local util = require('openmw.util')
 
 local maxThresholdForOff = 0.1
 local minThresholdForOn = 0.2
@@ -50,7 +51,8 @@ function KeyFunctions.update(self, dt)
             self.analog = 1
         end
     elseif type(newState) == "number" then
-        self.analog = math.max(0, math.min(1, newState))
+        -- remap to [minThresholdForOn,1] since we ignore input from below minThresholdForOn.
+        self.analog = util.remap(math.max(minThresholdForOn, math.min(1, newState)), minThresholdForOn, 1, 0, 1)
         if newState >= minThresholdForOn then
             newBooleanState = true
         elseif newState <= maxThresholdForOff then
