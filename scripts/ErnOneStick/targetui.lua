@@ -27,11 +27,61 @@ local types = require('openmw.types')
 
 -- https://openmw.readthedocs.io/en/stable/reference/lua-scripting/widgets/widget.html#properties
 
+-- https://openmw.readthedocs.io/en/stable/reference/lua-scripting/openmw_ui.html##(Template)
+
+local function atLeastRank(npc, factionID, rank)
+    local inFaction = false
+    for _, foundID in pairs(types.NPC.getFactions(npc)) do
+        if foundID == factionID then
+            inFaction = true
+            break
+        end
+    end
+    if inFaction == false then
+        settings.debugPrint("your rank in " .. factionID .. " is <not a member>")
+        return false
+    end
+
+    local selfRank = types.NPC.getFactionRank(npc, factionID)
+    settings.debugPrint("your rank in " .. factionID .. " is " .. tostring(selfRank))
+    if selfRank == nil then
+        return false
+    elseif (rank == nil) then
+        return true
+    else
+        return selfRank >= rank
+    end
+end
+
+local function isOwned(entity)
+    if entity.baseType == types.Actor then
+        return false
+    end
+    if entity.owner == nil then
+        return false
+    end
+    if entity.owner.recordId ~= nil then
+        return true
+    end
+    if entity.owner.factionId ~= nil then
+        if atLeastRank(pself, entity.owner.factionId, entity.owner.factionRank) == false then
+            return true
+        end
+    end
+    return false
+end
+
 local function getRecord(entity)
     return entity.type.records[entity.recordId]
 end
 
 local function makeTargetUI(entity)
+    -- headerColor = util.color.rgb(223 / 255, 201 / 255, 159 / 255),
+    local color = util.color.rgb(223 / 255, 201 / 255, 159 / 255)
+    if isOwned(entity) then
+        color = util.color.rgb(255 / 255, 99 / 255, 71 / 255)
+    end
+
     -- (0,0) is top left of screen.
     -- default anchor is top-left. 1,0 is top right.
     local lowerBox = ui.create {
@@ -46,14 +96,21 @@ local function makeTargetUI(entity)
             visible = true
         },
         content = ui.content { {
-            relativePosition = util.vector2(0.5, 0.5),
-            size = util.vector2(30, 30),
-            anchor = util.vector2(0.5, 0.5),
-            template = interfaces.MWUI.templates.textHeader,
-            type = ui.TYPE.Text,
+            template = interfaces.MWUI.templates.padding,
             props = {
-                text = getRecord(entity).name,
+                visible = true
             },
+            content = ui.content { {
+                relativePosition = util.vector2(0.5, 0.5),
+                size = util.vector2(30, 30),
+                anchor = util.vector2(0.5, 0.5),
+                template = interfaces.MWUI.templates.textHeader,
+                type = ui.TYPE.Text,
+                props = {
+                    text = getRecord(entity).name,
+                    textColor = color,
+                },
+            } },
         } }
     }
     return lowerBox

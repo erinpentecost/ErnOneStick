@@ -72,8 +72,8 @@ local function inBox(position, box)
 end
 
 local function inWorldSpace(entity)
-    -- TODO: this should also return false if the entity is outside and we are inside and vice-versa
-    return (entity ~= nil) and entity:isValid() and entity.enabled and (entity.parentContainer == nil)
+    return (entity ~= nil) and entity:isValid() and entity.enabled and (entity.parentContainer == nil) and
+    pself.cell:isInSameSpace(entity)
 end
 
 local function targetAngles(worldVector, t)
