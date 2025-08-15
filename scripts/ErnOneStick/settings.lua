@@ -52,6 +52,29 @@ end
 
 local function initSettings()
     interfaces.Settings.registerGroup {
+        key = "SettingsAdmin" .. MOD_NAME,
+        l10n = MOD_NAME,
+        name = "modSettingsAdminTitle",
+        description = "modSettingsAdminDesc",
+        page = MOD_NAME,
+        permanentStorage = false,
+        order = 10,
+        settings = { {
+            key = "disable",
+            name = "disable_name",
+            description = "disable_description",
+            default = false,
+            renderer = "checkbox"
+        }, {
+            key = "debugMode",
+            name = "debugMode_name",
+            description = "debugMode_description",
+            default = false,
+            renderer = "checkbox"
+        } }
+    }
+
+    interfaces.Settings.registerGroup {
         key = "SettingsInput" .. MOD_NAME,
         l10n = MOD_NAME,
         name = "modSettingsInputTitle",
@@ -63,7 +86,7 @@ local function initSettings()
             name = "lockButton_name",
             description = "lockButton_description",
             -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
-            --default = "RightStick",
+            default = "RightStick",
             -- this doesn't actually work
             renderer = "inputBinding",
             argument = {
@@ -121,28 +144,12 @@ local function initSettings()
             description = "runWhileLockedOn_description",
             default = true,
             renderer = "checkbox",
-        } }
-    }
-
-    interfaces.Settings.registerGroup {
-        key = "SettingsAdmin" .. MOD_NAME,
-        l10n = MOD_NAME,
-        name = "modSettingsAdminTitle",
-        description = "modSettingsAdminDesc",
-        page = MOD_NAME,
-        permanentStorage = false,
-        settings = { {
-            key = "disable",
-            name = "disable_name",
-            description = "disable_description",
-            default = false,
-            renderer = "checkbox"
         }, {
-            key = "debugMode",
-            name = "debugMode_name",
-            description = "debugMode_description",
+            key = "dynamicPitch",
+            name = "dynamicPitch_name",
+            description = "dynamicPitch_description",
             default = false,
-            renderer = "checkbox"
+            renderer = "checkbox",
         } }
     }
 

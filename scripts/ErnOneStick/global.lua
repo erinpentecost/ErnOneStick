@@ -63,6 +63,12 @@ local function onUpdate(dt)
     end
 end
 
+local function onNewGame()
+    for _, player in ipairs(world.players) do
+        player:sendEvent(settings.MOD_NAME .. "onNewGame", {})
+    end
+end
+
 return {
     eventHandlers = {
         [settings.MOD_NAME .. "onPause"] = onPause,
@@ -71,6 +77,7 @@ return {
         [settings.MOD_NAME .. "onActivate"] = onActivate,
     },
     engineHandlers = {
-        onUpdate = onUpdate
+        onUpdate = onUpdate,
+        onNewGame = onNewGame
     }
 }

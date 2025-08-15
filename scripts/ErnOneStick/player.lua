@@ -44,8 +44,6 @@ if settings.disable() then
     return
 end
 
-settings.debugPrint("lockButton control is " .. tostring(settings.lockButton))
-
 controls.overrideMovementControls(true)
 cameraInterface.disableModeControl(settings.MOD_NAME)
 
@@ -54,6 +52,13 @@ local invertLook = 1
 if settings.invertLookVertical then
     invertLook = -1
 end
+
+input.registerAction {
+    key = settings.MOD_NAME .. "LockButton",
+    type = input.ACTION_TYPE.Boolean,
+    l10n = settings.MOD_NAME,
+    defaultValue = false,
+}
 
 local function getSoundFilePath(file)
     return "Sound\\" .. settings.MOD_NAME .. "\\" .. file
@@ -73,13 +78,22 @@ end
 
 local function inWorldSpace(entity)
     return (entity ~= nil) and entity:isValid() and entity.enabled and (entity.parentContainer == nil) and
-    pself.cell:isInSameSpace(entity)
+        pself.cell:isInSameSpace(entity)
 end
 
 local function targetAngles(worldVector, t)
     -- This swings the viewport toward worldVector
     if t == nil then
         t = 1
+    end
+
+    -- safety for when we're too close
+    if (util.vector2(pself.position.x, pself.position.y) - util.vector2(worldVector.x, worldVector.y)):length2() < 200 then
+        settings.debugPrint("too close")
+        return {
+            yaw = 0,
+            pitch = 0
+        }
     end
 
     local direction = (worldVector - camera.getPosition()):normalize()
@@ -185,14 +199,6 @@ local handleReach = function()
     reach = dist
 end
 
-
-input.registerAction {
-    key = settings.MOD_NAME .. "LockButton",
-    type = input.ACTION_TYPE.Boolean,
-    l10n = settings.MOD_NAME,
-    defaultValue = false,
-}
-
 local keyLock = keytrack.NewKey("lock",
     function(dt) return input.getBooleanActionValue(settings.MOD_NAME .. "LockButton") end)
 local keyForward = keytrack.NewKey("forward", function(dt)
@@ -258,6 +264,7 @@ local travelState = state.NewState()
 local preliminaryFreeLookState = state.NewState()
 local freeLookState = state.NewState()
 local uiState = state.NewState()
+local noControlState = state.NewState()
 
 uiState:set({
     name = "uiState",
@@ -275,6 +282,34 @@ uiState:set({
     onUpdate = function(s, dt)
     end
 })
+
+local function handleControl()
+    -- try to not destroy the camera so much
+    if (types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Looking) ~= true) or (types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Controls) ~= true) then
+        if stateMachine:current().name ~= noControlState.name then
+            settings.debugPrint("Detected lack of control, stopping one-stick mode.")
+            stateMachine:push(noControlState)
+        end
+    end
+end
+
+noControlState:set({
+    name = "noControlState",
+    onEnter = function(base)
+        controls.overrideMovementControls(false)
+    end,
+    onExit = function(base)
+        controls.overrideMovementControls(true)
+    end,
+    onFrame = function(s, dt)
+    end,
+    onUpdate = function(s, dt)
+        if (types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Looking) == true) and (types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Controls) == true) then
+            stateMachine:pop()
+        end
+    end
+})
+--
 
 lockedOnState:set({
     name = "lockedOnState",
@@ -652,6 +687,23 @@ local function easeInOutSine(t)
     return -1 * (math.cos(math.pi * t) - 1) / 2
 end
 
+local function objectAffectsDynamicPitch(entity)
+    if entity == nil then
+        return true
+    end
+    if entity.type ~= types.Static then
+        return false
+    end
+    -- only pitch for high-volume objects (like stairs and buildings)
+    local boxLengths = entity:getBoundingBox().halfSize * 2
+    local volume = boxLengths.x * boxLengths.y * boxLengths.z
+
+    --[[settings.debugPrint("hit " .. entity.recordId .. " - " ..
+        tostring(volume))]]
+
+    return volume > 1500000
+end
+
 travelState:set({
     name = "travelState",
     desiredPitch = 0,
@@ -671,7 +723,6 @@ travelState:set({
     end,
     onFrame = function(s, dt)
         if keyLock.rise and types.Actor.canMove(pself) then
-            print("travel state: lock started")
             stateMachine:replace(preliminaryFreeLookState)
             return
         end
@@ -709,11 +760,21 @@ travelState:set({
             return
         end
 
+        if settings.dynamicPitch == false then
+            s.base.desiredPitch = 0
+            return
+        end
+        -- this is really expensive, so don't do it on every update.
+        if math.random(1, 8) ~= 1 then
+            return
+        end
+
         local zHalfHeight = pself:getBoundingBox().halfSize.z
         -- positive Z is up.
 
         local facing = pself.rotation:apply(util.vector3(0, 1, 0)):normalize()
-        local leadingPosition = camera.getPosition() + (facing * 3 * pself:getBoundingBox().halfSize.y)
+        facing = util.vector3(facing.x, facing.y, 0)
+        local leadingPosition = camera.getPosition() + (facing * 1.8 * pself:getBoundingBox().halfSize.y)
 
         local downward = util.vector3(leadingPosition.x, leadingPosition.y,
             leadingPosition.z - (10 * zHalfHeight))
@@ -724,12 +785,13 @@ travelState:set({
                 -- We need World to see stairs, but this also triggers on tables (which is bad).
                 -- This doesn't hit docks or boats, though, so on those we stare down if the
                 -- bottom of the water is close enough. Can't win them all, I guess.
-                collisionType = nearby.COLLISION_TYPE.HeightMap + nearby.COLLISION_TYPE.World,
+                collisionType = nearby.COLLISION_TYPE.HeightMap + nearby.COLLISION_TYPE.World +
+                    nearby.COLLISION_TYPE.Water,
                 radius = 1
             }
         )
 
-        if castResult.hit then
+        if castResult.hit and objectAffectsDynamicPitch(castResult.hitObject) then
             -- we hit the ground.
             -- maybe add  camera.getFirstPersonOffset()
             local spotOnGround = castResult.hitPos +
@@ -760,7 +822,7 @@ travelState:set({
             end
 
             -- Make a deadzone around 0
-            local minPitch = 0.05
+            local minPitch = 0.07
             if targetPitch > minPitch then
                 targetPitch = targetPitch - minPitch
             elseif targetPitch < -1 * minPitch then
@@ -769,12 +831,30 @@ travelState:set({
 
             -- swingToMax is the linear progress of zero pitch to max pitch
             local swingToMax = math.abs(targetPitch) / maxPitchCorrection
+            -- when stuck on ground, heightoffset is only 72.
+            --[[settings.debugPrint("swing:" ..
+                string.format("%.3f", swingToMax) ..
+                " raw:" ..
+                string.format("%.3f", rawTarget) ..
+                " heightoffset:" .. string.format("%.3f", camera.getFirstPersonOffset().z + (2 * zHalfHeight)))
+                ]]
+            -- this is 0
+            --settings.debugPrint("camera.getFirstPersonOffset().z: " ..
+            -- string.format("%.3f", camera.getFirstPersonOffset().z))
+            --settings.debugPrint("campos-pselfpos: " .. tostring(camera.getPosition() - pself.position))
 
             s.base.desiredPitch = easeInOutSine(swingToMax) * maxPitchCorrection * upDown
         else
             -- we didn't hit anything, so look straight ahead.
             s.base.desiredPitch = 0
         end
+
+        --[[settings.debugPrint("pself:" ..
+            string.format("%.3f", pself.rotation:getPitch()) ..
+            " camera:" ..
+            string.format("%.3f", camera.getPitch()) .. " desired:" ..
+            string.format("%.3f", s.base.desiredPitch))
+            ]]
     end
 })
 
@@ -890,6 +970,8 @@ local function onFrame(dt)
     handleSneak(dt)
     handleReach()
 
+    handleControl()
+
     local currentState = stateMachine:current()
     currentState.onFrame(currentState, dt)
 
@@ -911,9 +993,14 @@ local function UiModeChanged(data)
     end
 end
 
+local function onNewGame()
+    ui.showMessage(localization("newGameMessage", {}))
+end
+
 return {
     eventHandlers = {
-        UiModeChanged = UiModeChanged
+        UiModeChanged = UiModeChanged,
+        [settings.MOD_NAME .. 'onNewGame'] = onNewGame,
     },
     engineHandlers = {
         onFrame = onFrame,
