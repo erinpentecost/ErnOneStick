@@ -9,7 +9,7 @@ In *travel mode*, you have tank controls. Forward and back move your character, 
 
 In *freelook mode*, your stick pitches and yaws the camera, but you can't move. When you release the Lock Button, you'll go back to *travel mode*. You'll need to enter this mode to aim up or down when swimming or levitating.
 
-In *target selection mode*, push your stick up or down to cycle through actor targets. Push your stick left or right to cycle through all other targets. Tap the Lock Button to lock-on to your selected target and enter *lock-on mode*.
+In *target selection mode*, push your stick up or down to cycle through actor targets. Push your stick left or right to cycle through all other targets. Tap the Lock Button to lock-on to your selected target and enter *lock-on mode*. Alternatively, use the `Activate` button to use the thing or talk to the person you are looking at. After using `Activate`, you be placed back into *travel mode*.
 
 In *lock-on mode*, your camera will remain pinned on your target. Your stick moves back and forward and strafes. Tap the Lock Button to go back to *travel mode*.
 
@@ -24,6 +24,8 @@ data="/wherevermymodsare/mods/ErnOneStick-main"
 content=ErnOneStick.omwscripts
 ```
 
+After installation, **you must assign a button to the Lock Button action in the mod settings.**
+
 ## Credits
 
 ### Shader
@@ -35,3 +37,8 @@ The shader is copied from [Max Yari's Dynamic camera effects and target lock](ht
 - Wind 1 Loop by jasoneweber -- https://freesound.org/s/179110/ -- License: Attribution 3.0
 - ping.mp3 by jolup123 -- https://freesound.org/s/668790/ -- License: Creative Commons 0
 - Breath In by mooncubedesign -- https://freesound.org/s/319247/ -- License: Creative Commons 0
+- cancel.wav by pierrecartoons1979 -- https://freesound.org/s/90119/ -- License: Attribution NonCommercial 3.0
+
+## Contributing
+
+Submit a merge request or file an issue in the [GitHub repo](https://github.com/erinpentecost/ErnOneStick). Any code submitted must be your own work. See the [CONTRIBUTING document](https://github.com/erinpentecost/ErnOneStick/blob/main/CONTRIBUTING) for more info.

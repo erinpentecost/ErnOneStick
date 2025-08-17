@@ -64,8 +64,10 @@ local function onUpdate(dt)
 end
 
 local function onNewGame()
-    for _, player in ipairs(world.players) do
-        player:sendEvent(settings.MOD_NAME .. "onNewGame", {})
+    if settings.disable() ~= true then
+        for _, player in ipairs(world.players) do
+            player:sendEvent(settings.MOD_NAME .. "onNewGame", {})
+        end
     end
 end
 
