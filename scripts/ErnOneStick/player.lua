@@ -711,7 +711,11 @@ travelState:set({
     onGround = false,
     onEnter = function(base)
         settings.debugPrint("enter state: travel")
-        camera.setMode(camera.MODE.FirstPerson, true)
+        if settings.travel3rd then
+            camera.setMode(camera.MODE.ThirdPerson, true)
+        else
+            camera.setMode(camera.MODE.FirstPerson, true)
+        end
         pself.controls.sideMovement = 0
         base.desiredPitch = 0
         base.updateCounter = 0

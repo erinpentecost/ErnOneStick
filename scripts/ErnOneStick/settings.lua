@@ -150,6 +150,12 @@ local function initSettings()
             description = "dynamicPitch_description",
             default = false,
             renderer = "checkbox",
+        }, {
+            key = "travel3rd",
+            name = "travel3rd_name",
+            description = "travel3rd_description",
+            default = false,
+            renderer = "checkbox",
         } }
     }
 
