@@ -283,7 +283,7 @@ uiState:set({
     end
 })
 
-local function handleControl()
+local function handleControlLoss()
     -- try to not destroy the camera so much
     if (types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Looking) ~= true) or (types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Controls) ~= true) then
         if stateMachine:current().name ~= noControlState.name then
@@ -707,12 +707,14 @@ end
 travelState:set({
     name = "travelState",
     desiredPitch = 0,
+    updateCounter = 0,
     onGround = false,
     onEnter = function(base)
         settings.debugPrint("enter state: travel")
         camera.setMode(camera.MODE.FirstPerson, true)
         pself.controls.sideMovement = 0
         base.desiredPitch = 0
+        base.updateCounter = 0
         base.onGround = types.Actor.isOnGround(pself)
     end,
     onExit = function(base)
@@ -765,8 +767,11 @@ travelState:set({
             return
         end
         -- this is really expensive, so don't do it on every update.
-        if math.random(1, 8) ~= 1 then
+        s.base.updateCounter = s.base.updateCounter + dt
+        if s.base.updateCounter < 0.1 then
             return
+        else
+            s.base.updateCounter = 0
         end
 
         local zHalfHeight = pself:getBoundingBox().halfSize.z
@@ -793,22 +798,27 @@ travelState:set({
 
         if castResult.hit and objectAffectsDynamicPitch(castResult.hitObject) then
             -- we hit the ground.
-            -- maybe add  camera.getFirstPersonOffset()
-            local spotOnGround = castResult.hitPos +
-                util.vector3(0.0, 0.0, camera.getFirstPersonOffset().z + (2 * zHalfHeight))
+            -- I don't want the z-length between the camera and the hitposition.
+            -- I want the difference between the hit position and the leading position.
+            local opposite = (camera.getPosition().z - castResult.hitPos.z) - (camera.getPosition().z - pself.position.z)
+            local adjacentLength = (util.vector2(castResult.hitPos.x, castResult.hitPos.y) -
+                util.vector2(camera.getPosition().x, camera.getPosition().y)):length()
 
-            --[[settings.debugPrint("hit something at z=" ..
+            local pitch = util.normalizeAngle(math.atan2(opposite, adjacentLength))
+
+            --[[
+            settings.debugPrint("hit " .. castResult.hitObject.recordId .. " at z=" ..
                 string.format("%.3f", castResult.hitPos.z) ..
-                ". cameraZ=" ..
-                string.format("%.3f", camera.getPosition().z) ..
-                ". lookSpotZ=" .. string.format("%.3f", s.base.spotWeShouldLookAt.z))]]
-
-
-            local direction = (spotOnGround - camera.getPosition()):normalize()
-            -- rawTargetPitch is the unclamped, unlerped desired pitch.
-            local rawTarget = util.normalizeAngle(-math.asin(direction.z))
-
-            local targetPitch = rawTarget
+                ". cameraZ=" .. string.format("%.3f", camera.getPosition().z) ..
+                ". selfZ=" .. string.format("%.3f", pself.position.z) ..
+                ". opposite=" .. string.format("%.3f", opposite) ..
+                ". leadingPositionZ=" .. string.format("%.3f", leadingPosition.z) ..
+                ". adjacentLength=" .. string.format("%.3f", adjacentLength) ..
+                --". zHalfHeight=" .. string.format("%.3f", zHalfHeight) ..
+                ". pitch=" .. string.format("%.3f", pitch) ..
+                ". cameraOffsetZ=" .. string.format("%.3f", camera.getFirstPersonOffset().z))
+]]
+            local targetPitch = pitch
 
             -- clamp this so we never look straight up or straight down.
             local maxPitchCorrection = 0.4
@@ -970,7 +980,7 @@ local function onFrame(dt)
     handleSneak(dt)
     handleReach()
 
-    handleControl()
+    handleControlLoss()
 
     local currentState = stateMachine:current()
     currentState.onFrame(currentState, dt)
