@@ -24,6 +24,11 @@ volume_name: "Sound Effects Volume"
 dynamicPitch_name: "Dynamic Pitch"
 dynamicPitch_description: "Adjust pitch on-the-fly during travel mode. Turn this off if you have FPS issues or motion sickness."
 
+travelcam_name: "Camera POV - Travel"
+travelcam_description: "Camera point-of-view during travel mode."
+first: "First"
+"third": "Third"
+
 runWhileLockedOn_name: "Can Run While Locked On"
 runWhileLockedOn_description: "Set this to false if you have a D-Pad and are running out of Fatigue often during combat."
 

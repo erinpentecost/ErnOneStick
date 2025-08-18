@@ -711,7 +711,15 @@ travelState:set({
     onGround = false,
     onEnter = function(base)
         settings.debugPrint("enter state: travel")
-        camera.setMode(camera.MODE.FirstPerson, true)
+        if settings.travelcam == "third" then
+            camera.setMode(camera.MODE.ThirdPerson, true)
+            camera.setPreferredThirdPersonDistance(0)
+            camera.setFocalPreferredOffset(util.vector2(0, 0))
+        elseif settings.travelcam == "first" then
+            camera.setMode(camera.MODE.FirstPerson, true)
+        else
+            error("unknown setting value for travelcam")
+        end
         pself.controls.sideMovement = 0
         base.desiredPitch = 0
         base.updateCounter = 0
@@ -779,7 +787,7 @@ travelState:set({
 
         local facing = pself.rotation:apply(util.vector3(0, 1, 0)):normalize()
         facing = util.vector3(facing.x, facing.y, 0)
-        local leadingPosition = camera.getPosition() + (facing * 1.8 * pself:getBoundingBox().halfSize.y)
+        local leadingPosition = camera.getTrackedPosition() + (facing * 1.8 * pself:getBoundingBox().halfSize.y)
 
         local downward = util.vector3(leadingPosition.x, leadingPosition.y,
             leadingPosition.z - (10 * zHalfHeight))
@@ -800,24 +808,13 @@ travelState:set({
             -- we hit the ground.
             -- I don't want the z-length between the camera and the hitposition.
             -- I want the difference between the hit position and the leading position.
-            local opposite = (camera.getPosition().z - castResult.hitPos.z) - (camera.getPosition().z - pself.position.z)
+            local opposite = (camera.getTrackedPosition().z - castResult.hitPos.z) -
+                (camera.getTrackedPosition().z - pself.position.z)
             local adjacentLength = (util.vector2(castResult.hitPos.x, castResult.hitPos.y) -
-                util.vector2(camera.getPosition().x, camera.getPosition().y)):length()
+                util.vector2(camera.getTrackedPosition().x, camera.getTrackedPosition().y)):length()
 
             local pitch = util.normalizeAngle(math.atan2(opposite, adjacentLength))
 
-            --[[
-            settings.debugPrint("hit " .. castResult.hitObject.recordId .. " at z=" ..
-                string.format("%.3f", castResult.hitPos.z) ..
-                ". cameraZ=" .. string.format("%.3f", camera.getPosition().z) ..
-                ". selfZ=" .. string.format("%.3f", pself.position.z) ..
-                ". opposite=" .. string.format("%.3f", opposite) ..
-                ". leadingPositionZ=" .. string.format("%.3f", leadingPosition.z) ..
-                ". adjacentLength=" .. string.format("%.3f", adjacentLength) ..
-                --". zHalfHeight=" .. string.format("%.3f", zHalfHeight) ..
-                ". pitch=" .. string.format("%.3f", pitch) ..
-                ". cameraOffsetZ=" .. string.format("%.3f", camera.getFirstPersonOffset().z))
-]]
             local targetPitch = pitch
 
             -- clamp this so we never look straight up or straight down.
