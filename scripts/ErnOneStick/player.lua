@@ -801,10 +801,6 @@ travelState:set({
             -- I don't want the z-length between the camera and the hitposition.
             -- I want the difference between the hit position and the leading position.
             local opposite = (camera.getPosition().z - castResult.hitPos.z) - (camera.getPosition().z - pself.position.z)
-            --local groundPlusOffset = castResult.hitPos.z + camera.getFirstPersonOffset().z + (2 * zHalfHeight) -
-            --    camera.getPosition().z
-            -- minusCameraZ is the opposite angle length
-            -- local minusCameraZ = groundPlusOffset - camera.getPosition().z
             local adjacentLength = (util.vector2(castResult.hitPos.x, castResult.hitPos.y) -
                 util.vector2(camera.getPosition().x, camera.getPosition().y)):length()
 
