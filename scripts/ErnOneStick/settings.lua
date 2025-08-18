@@ -50,6 +50,8 @@ local function registerPage()
     }
 end
 
+local cameraModes = { "first", "third" }
+
 local function initSettings()
     interfaces.Settings.registerGroup {
         key = "SettingsAdmin" .. MOD_NAME,
@@ -151,11 +153,12 @@ local function initSettings()
             default = false,
             renderer = "checkbox",
         }, {
-            key = "travel3rd",
-            name = "travel3rd_name",
-            description = "travel3rd_description",
-            default = false,
-            renderer = "checkbox",
+            key = "travelcam",
+            name = "travelcam_name",
+            description = "travelcam_description",
+            argument = { items = cameraModes, l10n = MOD_NAME },
+            default = cameraModes[1],
+            renderer = "select",
         } }
     }
 
