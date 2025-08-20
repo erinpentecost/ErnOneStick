@@ -29,6 +29,9 @@ travelcam_description: "Camera point-of-view during travel mode."
 first: "First"
 third: "Third"
 
+autoLockon_name: "Automatic Lock-On"
+autoLockon_description: "In Travel or Freelook mode, automatically transition directly to Locked-On mode when you hit an NPC or Creature."
+
 lockedoncam_name: "Camera POV - Locked-On"
 lockedoncam_description: "Camera point-of-view during locked-on mode."
 
