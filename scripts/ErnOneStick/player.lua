@@ -277,6 +277,21 @@ local freeLookState = state.NewState()
 local uiState = state.NewState()
 local noControlState = state.NewState()
 
+
+-- lastHit is the last NPC that was struck by the player.
+local lastHit = nil
+
+local function onStruck(data)
+    --onStruck is called when the player hits some other actor.
+    lastHit = data.target
+end
+
+local function startLockon(target)
+    print("Locking onto " .. target.recordId .. " (" .. target.id .. ")!")
+    lockedOnState.base.target = target
+    stateMachine:replace(lockedOnState)
+end
+
 uiState:set({
     name = "uiState",
     onEnter = function(base)
@@ -606,9 +621,7 @@ lockSelectionState:set({
         if keyLock.rise then
             if s.base.currentTarget then
                 -- we selected a target
-                print("Locking onto " .. s.base.currentTarget.recordId .. " (" .. s.base.currentTarget.id .. ")!")
-                lockedOnState.base.target = s.base.currentTarget
-                stateMachine:replace(lockedOnState)
+                startLockon(s.base.currentTarget)
             else
                 print("No target on keyLock rise, quitting.")
                 -- no target, so move to travel state.
@@ -762,6 +775,10 @@ travelState:set({
         if keyLock.rise and types.Actor.canMove(pself) then
             stateMachine:replace(preliminaryFreeLookState)
             return
+        end
+
+        if settings.autoLockon and lastHit ~= nil then
+            startLockon(lastHit)
         end
 
         -- Why do I have to set this on every frame?
@@ -980,6 +997,10 @@ freeLookState:set({
             return
         end
 
+        if settings.autoLockon and lastHit ~= nil then
+            startLockon(lastHit)
+        end
+
         if keyForward.pressed then
             pself.controls.pitchChange = keyForward.analog * settings.lookSensitivityVertical * (-1 * dt) * invertLook
         elseif keyBackward.pressed then
@@ -1017,6 +1038,9 @@ local function onFrame(dt)
 
     -- triggers should be disabled after state handling, since they are once per frame.
     handleActivate(dt)
+
+    -- lastHit must be cleaned up so it is only set once per frame.
+    lastHit = nil
 end
 
 local function onUpdate(dt)
@@ -1037,10 +1061,14 @@ local function onNewGame()
     ui.showMessage(localization("newGameMessage", {}))
 end
 
+
+
+
 return {
     eventHandlers = {
         UiModeChanged = UiModeChanged,
         [settings.MOD_NAME .. 'onNewGame'] = onNewGame,
+        [settings.MOD_NAME .. 'onStruck'] = onStruck,
     },
     engineHandlers = {
         onFrame = onFrame,
