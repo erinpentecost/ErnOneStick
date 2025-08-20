@@ -19,7 +19,7 @@ local settings = require("scripts.ErnOneStick.settings")
 local pself = require("openmw.self")
 local combat = require('openmw.interfaces').Combat
 
-if require("openmw.core").API_REVISION < 63 then
+if require("openmw.core").API_REVISION < 77 then
     settings.debugPrint("Auto-lockon is disabled because this version of openMW is too old.")
     return
 end
