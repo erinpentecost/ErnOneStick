@@ -159,6 +159,13 @@ local function initSettings()
             argument = { items = cameraModes, l10n = MOD_NAME },
             default = cameraModes[1],
             renderer = "select",
+        }, {
+            key = "lockedoncam",
+            name = "lockedoncam_name",
+            description = "lockedoncam_description",
+            argument = { items = cameraModes, l10n = MOD_NAME },
+            default = cameraModes[1],
+            renderer = "select",
         } }
     }
 
