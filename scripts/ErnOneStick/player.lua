@@ -110,9 +110,12 @@ local function targetAngles(worldVector, t)
     }
 end
 
-local function trackPitch(targetPitch, t)
+local function trackPitch(targetPitch, t, pitchMod)
     if t == nil then
         t = 1
+    end
+    if pitchMod == nil then
+        pitchMod = 0
     end
     targetPitch = radians.lerpAngle(pself.rotation:getPitch(), targetPitch, t)
 
@@ -120,18 +123,21 @@ local function trackPitch(targetPitch, t)
         return
     end
 
-    camera.setPitch(targetPitch)
+    camera.setPitch(targetPitch + pitchMod)
     pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), targetPitch)
 end
 
-local function track(worldVector, t)
+local function track(worldVector, t, pitchMod)
+    if pitchMod == nil then
+        pitchMod = 0
+    end
     local angles = targetAngles(worldVector, t)
 
     if radians.anglesAlmostEqual(pself.rotation:getYaw(), angles.yaw) and radians.anglesAlmostEqual(pself.rotation:getPitch(), angles.pitch) then
         return
     end
 
-    camera.setPitch(angles.pitch)
+    camera.setPitch(angles.pitch + pitchMod)
     pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), angles.pitch)
 
     camera.setYaw(angles.yaw)
@@ -163,6 +169,11 @@ local function look(worldVector, t)
         ") self(" ..
         string.format("%.3f", pself.rotation:getYaw()) .. "/" .. string.format("%.3f", pself.rotation:getPitch()) ..
         ")")]]
+end
+
+local function setThirdPOVSettings()
+    camera.setPreferredThirdPersonDistance(120)
+    camera.setFocalPreferredOffset(util.vector2(0, 15))
 end
 
 local function isActor(entity)
@@ -315,11 +326,21 @@ lockedOnState:set({
     name = "lockedOnState",
     target = nil,
     lookPosition = util.vector3(0, 0, 0),
+    pitchMod = 0,
     onEnter = function(base)
         pself.controls.movement = 0
         pself.controls.yawChange = 0
         pself.controls.pitchChange = 0
         pself.controls.run = false
+        if settings.lockedoncam == "third" then
+            base.pitchMod = 0.2
+            setThirdPOVSettings()
+            camera.setMode(camera.MODE.ThirdPerson, true)
+        elseif settings.lockedoncam == "first" then
+            camera.setMode(camera.MODE.FirstPerson, true)
+        else
+            error("unknown setting value for travelcam")
+        end
         if inWorldSpace(base.target) == false then
             error("no target for locked-on state")
             base.lookPosition = util.vector3(0, 0, 0)
@@ -341,8 +362,14 @@ lockedOnState:set({
             stateMachine:replace(travelState)
             return
         end
+
+        -- Why do I have to set this on every frame?
+        if settings.lockedoncam == "third" then
+            setThirdPOVSettings()
+        end
+
         local shouldRun = false
-        track(s.base.lookPosition, 0.6)
+        track(s.base.lookPosition, 0.8, s.base.pitchMod)
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
             shouldRun = shouldRun or (keyForward.analog > runThreshold)
@@ -709,12 +736,12 @@ travelState:set({
     desiredPitch = 0,
     updateCounter = 0,
     onGround = false,
+    pitchMod = 0,
     onEnter = function(base)
-        settings.debugPrint("enter state: travel")
         if settings.travelcam == "third" then
             camera.setMode(camera.MODE.ThirdPerson, true)
-            camera.setPreferredThirdPersonDistance(0)
-            camera.setFocalPreferredOffset(util.vector2(0, 0))
+            setThirdPOVSettings()
+            base.pitchMod = 0.3
         elseif settings.travelcam == "first" then
             camera.setMode(camera.MODE.FirstPerson, true)
         else
@@ -736,12 +763,18 @@ travelState:set({
             stateMachine:replace(preliminaryFreeLookState)
             return
         end
+
+        -- Why do I have to set this on every frame?
+        if settings.travelcam == "third" then
+            setThirdPOVSettings()
+        end
+
         pself.controls.sideMovement = 0
         -- Reset camera to foward if we are on the ground.
         -- Don't do this when swimming or levitating so the player
         -- can point up or down.
         if s.base.onGround then
-            trackPitch(s.base.desiredPitch, 0.1)
+            trackPitch(s.base.desiredPitch, 0.1, s.base.pitchMod)
         else
             pself.controls.pitchChange = 0
         end

@@ -27,7 +27,10 @@ dynamicPitch_description: "Adjust pitch on-the-fly during travel mode. Turn this
 travelcam_name: "Camera POV - Travel"
 travelcam_description: "Camera point-of-view during travel mode."
 first: "First"
-"third": "Third"
+third: "Third"
+
+lockedoncam_name: "Camera POV - Locked-On"
+lockedoncam_description: "Camera point-of-view during locked-on mode."
 
 runWhileLockedOn_name: "Can Run While Locked On"
 runWhileLockedOn_description: "Set this to false if you have a D-Pad and are running out of Fatigue often during combat."
