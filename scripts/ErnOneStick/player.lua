@@ -362,6 +362,14 @@ lockedOnState:set({
         else
             base.lookPosition = lockOnPosition(base.target)
         end
+
+
+        if core.sound.isSoundFilePlaying(getSoundFilePath("wind.mp3"), pself) ~= true then
+            core.sound.playSoundFile3d(getSoundFilePath("wind.mp3"), pself, {
+                volume = settings.volume * 0.2,
+                loop = true,
+            })
+        end
     end,
     onExit = function(base)
         resetCamera()
@@ -778,6 +786,9 @@ travelState:set({
         end
 
         if settings.autoLockon and lastHit ~= nil then
+            core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
+                volume = settings.volume,
+            })
             startLockon(lastHit)
         end
 
@@ -998,6 +1009,9 @@ freeLookState:set({
         end
 
         if settings.autoLockon and lastHit ~= nil then
+            core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
+                volume = settings.volume,
+            })
             startLockon(lastHit)
         end
 
