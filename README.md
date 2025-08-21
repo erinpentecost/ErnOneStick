@@ -5,7 +5,7 @@ OpenMW mod that allows you to play the game on devices that only have one analog
 ## Stick Controls
 You change which mode you're in with the `Lock Button`, which you assign in the mod settings. You won't need the button that changes between first and third person (the mod assumes all control of camera modes).
 
-In *travel mode*, you have tank controls. Forward and back move your character, left and right yaw the camera. Hold the Lock Button and then use your stick to enter *freelook mode*. Instead of holding, just tap the Lock Button to enter *target selection mode*.
+In *travel mode*, you have tank controls. Forward and back move your character, left and right yaw the camera. Hold the Lock Button and then use your stick to enter *freelook mode*. Instead of holding, just tap the Lock Button to enter *target selection mode*. If enabled, attacking an NPC or Creature while in this mode will automatically put you into *lock-on mode*.
 
 In *freelook mode*, your stick pitches and yaws the camera, but you can't move. When you release the Lock Button, you'll go back to *travel mode*. You'll need to enter this mode to aim up or down when swimming or levitating.
 
