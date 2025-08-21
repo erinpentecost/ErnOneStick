@@ -60,6 +60,14 @@ input.registerAction {
     defaultValue = false,
 }
 
+local function clearControls()
+    pself.controls.sideMovement = 0
+    pself.controls.movement = 0
+    pself.controls.yawChange = 0
+    pself.controls.pitchChange = 0
+    pself.controls.run = false
+end
+
 local function getSoundFilePath(file)
     return "Sound\\" .. settings.MOD_NAME .. "\\" .. file
 end
@@ -295,6 +303,7 @@ end
 uiState:set({
     name = "uiState",
     onEnter = function(base)
+        clearControls()
         controls.overrideMovementControls(false)
     end,
     onExit = function(base)
@@ -322,6 +331,7 @@ end
 noControlState:set({
     name = "noControlState",
     onEnter = function(base)
+        clearControls()
         controls.overrideMovementControls(false)
     end,
     onExit = function(base)
@@ -343,10 +353,7 @@ lockedOnState:set({
     lookPosition = util.vector3(0, 0, 0),
     pitchMod = 0,
     onEnter = function(base)
-        pself.controls.movement = 0
-        pself.controls.yawChange = 0
-        pself.controls.pitchChange = 0
-        pself.controls.run = false
+        clearControls()
         if settings.lockedoncam == "third" then
             base.pitchMod = 0.2
             setThirdPOVSettings()
@@ -373,8 +380,7 @@ lockedOnState:set({
     end,
     onExit = function(base)
         resetCamera()
-        pself.controls.movement = 0
-        pself.controls.sideMovement = 0
+        clearControls()
         core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
             volume = settings.volume,
         })
@@ -495,16 +501,14 @@ lockSelectionState:set({
     others = {},
     onEnter = function(base)
         settings.debugPrint("enter state: lockselection")
-        pself.controls.movement = 0
-        pself.controls.yawChange = 0
-        pself.controls.pitchChange = 0
+        clearControls()
         resetCamera()
         core.sendGlobalEvent(settings.MOD_NAME .. "onPause")
         uiInterface.setHudVisibility(false)
         controls.overrideUiControls(true)
         camera.setMode(camera.MODE.FirstPerson, true)
 
-        local playerHead = pself:getBoundingBox().center + util.vector3(0, 0, pself:getBoundingBox().halfSize.z)
+        local playerHead = pself:getBoundingBox().center + util.vector3(0, 0, 0.9 * (pself:getBoundingBox().halfSize.z))
 
 
         base.actors = targets.TargetCollection:new(nearby.actors,
@@ -768,9 +772,7 @@ travelState:set({
         else
             error("unknown setting value for travelcam")
         end
-        pself.controls.sideMovement = 0
-        base.desiredPitch = 0
-        base.updateCounter = 0
+        clearControls()
         base.onGround = types.Actor.isOnGround(pself)
     end,
     onExit = function(base)
@@ -937,8 +939,7 @@ preliminaryFreeLookState:set({
         camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
         camera.setMode(camera.MODE.FirstPerson, true)
         base.timeInState = 0
-        pself.controls.yawChange = 0
-        pself.controls.pitchChange = 0
+        clearControls()
         --settings.debugPrint(base.name .. ".OnEnter() = " .. aux_util.deepToString(base, 3))
     end,
     onFrame = function(s, dt)
@@ -982,8 +983,7 @@ freeLookState:set({
         -- this is not resetting base.looking
         base.initialMode = camera.getMode()
         base.initialFOV = camera.getFieldOfView()
-        pself.controls.yawChange = 0
-        pself.controls.pitchChange = 0
+        clearControls()
 
         resetCamera()
 
