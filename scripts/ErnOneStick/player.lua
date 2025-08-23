@@ -118,12 +118,14 @@ local function targetAngles(worldVector, t)
     }
 end
 
-local function trackPitch(targetPitch, t, pitchMod)
+local function identity(p) return p end
+
+local function trackPitch(targetPitch, t, pitchModFn)
     if t == nil then
         t = 1
     end
-    if pitchMod == nil then
-        pitchMod = 0
+    if pitchModFn == nil then
+        pitchModFn = identity
     end
     targetPitch = radians.lerpAngle(pself.rotation:getPitch(), targetPitch, t)
 
@@ -131,13 +133,16 @@ local function trackPitch(targetPitch, t, pitchMod)
         return
     end
 
-    camera.setPitch(targetPitch + pitchMod)
+    camera.setPitch(pitchModFn(targetPitch))
     pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), targetPitch)
 end
 
-local function track(worldVector, t, pitchMod)
-    if pitchMod == nil then
-        pitchMod = 0
+local function track(worldVector, t, pitchModFn, yawModFn)
+    if pitchModFn == nil then
+        pitchModFn = identity
+    end
+    if yawModFn == nil then
+        yawModFn = identity
     end
     local angles = targetAngles(worldVector, t)
 
@@ -145,10 +150,10 @@ local function track(worldVector, t, pitchMod)
         return
     end
 
-    camera.setPitch(angles.pitch + pitchMod)
+    camera.setPitch(pitchModFn(angles.pitch))
     pself.controls.pitchChange = radians.subtract(pself.rotation:getPitch(), angles.pitch)
 
-    camera.setYaw(angles.yaw)
+    camera.setYaw(yawModFn(angles.yaw))
     pself.controls.yawChange = radians.subtract(pself.rotation:getYaw(), angles.yaw)
 end
 
@@ -189,15 +194,10 @@ local function isActor(entity)
 end
 
 local function lockOnPosition(entity)
-    -- this is bad for NPCs because you aren't looking at their faces.
-    -- this is bad for items because the center of the box isn't necessarily a clickable
-    -- part of the model.
     local pos = entity:getBoundingBox().center
     if isActor(entity) then
         local sizes = entity:getBoundingBox().halfSize
         -- if the actor is tall, offset so we are hopefully looking at their face.
-        -- we shouldn't just point up. we should rotate this accurately for when actors
-        -- are on the ground.
         if sizes.z * 0.8 > math.max(sizes.x, sizes.y) then
             pos = pos + entity.rotation:apply(util.vector3(0, 0, (sizes.z) * 0.7))
         end
@@ -205,8 +205,7 @@ local function lockOnPosition(entity)
     return pos
 end
 
-local reach = 0
-local handleReach = function()
+local function getReach()
     -- magnitude of telekinesis is in feet
     -- need "Constants::UnitsPerFoot" =  21.33333333f
     -- normal reach is gmst: iMaxActivateDist, which is in game units
@@ -215,7 +214,7 @@ local handleReach = function()
     if telekinesisEffect ~= nil then
         dist = dist + telekinesisEffect.magnitude * 21.33333333
     end
-    reach = dist
+    return dist
 end
 
 local keyLock = keytrack.NewKey("lock",
@@ -345,21 +344,36 @@ noControlState:set({
         end
     end
 })
---
 
 lockedOnState:set({
     name = "lockedOnState",
     target = nil,
     lookPosition = util.vector3(0, 0, 0),
-    pitchMod = 0,
+    pitchMod = nil,
+    yawMod = nil,
     onEnter = function(base)
         clearControls()
         if settings.lockedoncam == "third" then
-            base.pitchMod = 0.2
+            base.pitchMod = function(p)
+                -- there's a tendency for this to look near-straight-down when in melee.
+                return math.min(p + 0.2, 0.7)
+            end
+            base.yawMod = function(y)
+                -- the further away, the less the yaw mod.
+                -- the closer, the more.
+                -- this is messed up because the camera determines where your cursor is,
+                -- not which direction your character is facing. this makes your aim really bad.
+                --local dist = (pself:getBoundingBox().center - base.lookPosition):length()
+                --local yawMod = 1 - util.remap(util.clamp(dist, 200, 1000), 200, 1000, 0, 1)
+                --return y + yawMod * (-0.5)
+                return y
+            end
             setThirdPOVSettings()
             camera.setMode(camera.MODE.ThirdPerson, true)
         elseif settings.lockedoncam == "first" then
             camera.setMode(camera.MODE.FirstPerson, true)
+            base.pitchMod = nil
+            base.yawMod = nil
         else
             error("unknown setting value for travelcam")
         end
@@ -398,7 +412,7 @@ lockedOnState:set({
         end
 
         local shouldRun = false
-        track(s.base.lookPosition, 0.8, s.base.pitchMod)
+        track(s.base.lookPosition, 0.8, s.base.pitchMod, s.base.yawMod)
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
             shouldRun = shouldRun or (keyForward.analog > runThreshold)
@@ -567,6 +581,8 @@ lockSelectionState:set({
         for _, e in ipairs(nearby.containers) do
             table.insert(others, e)
         end
+
+        local reach = getReach()
 
         base.others = targets.TargetCollection:new(others,
             function(e)
@@ -761,14 +777,15 @@ travelState:set({
     desiredPitch = 0,
     updateCounter = 0,
     onGround = false,
-    pitchMod = 0,
+    pitchMod = nil,
     onEnter = function(base)
         if settings.travelcam == "third" then
             camera.setMode(camera.MODE.ThirdPerson, true)
             setThirdPOVSettings()
-            base.pitchMod = 0.3
+            base.pitchMod = function(p) return p + 0.3 end
         elseif settings.travelcam == "first" then
             camera.setMode(camera.MODE.FirstPerson, true)
+            base.pitchMod = nil
         else
             error("unknown setting value for travelcam")
         end
@@ -997,13 +1014,7 @@ freeLookState:set({
         pself.controls.pitchChange = 0
     end,
     onFrame = function(s, dt)
-        -- this state is entered when the lock button is first pressed,
-        -- and ends when the lock button is released.
-        -- if movement buttons are newly pressed while in this state, we
-        -- set "looking" to true and force first-person perspective.
-        -- when we exit this state, if "looking" is true, we go back to travel mode.
-        -- otherwise, we enter lock-on mode.
-        if keyLock.fall or (types.Actor.canMove(pself) == false) then
+        if keyLock.fall then
             stateMachine:replace(travelState)
             return
         end
@@ -1043,7 +1054,6 @@ local function onFrame(dt)
     keyLeft:update(dt)
     keyRight:update(dt)
     handleSneak(dt)
-    handleReach()
 
     handleControlLoss()
 
