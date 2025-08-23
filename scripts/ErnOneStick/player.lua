@@ -193,7 +193,6 @@ local function isActor(entity)
     return entity.type == types.Actor or entity.type == types.NPC or entity.type == types.Creature
 end
 
-local boundingBoxSizeCache = {}
 
 local function lerpVector3(a, b, t)
     return a + (b - a) * t
@@ -204,13 +203,8 @@ local function easeInOutSine(t)
     return -1 * (math.cos(math.pi * t) - 1) / 2
 end
 
-local function easeInSine(x)
-    return 1 - math.cos((x * math.pi) / 2)
-end
-
-local function easeInCubic(x)
-    return x * x * x
-end
+-- boundingBoxSizeCache is used to damp bounding box size changes.
+local boundingBoxSizeCache = {}
 
 local function lockOnPosition(entity)
     local pos = entity:getBoundingBox().center
@@ -390,6 +384,7 @@ lockedOnState:set({
                 -- the closer, the more.
                 -- this is messed up because the camera determines where your cursor is,
                 -- not which direction your character is facing. this makes your aim really bad.
+                -- Blocked by https://gitlab.com/OpenMW/openmw/-/issues/7684
                 --local dist = (pself:getBoundingBox().center - base.lookPosition):length()
                 --local yawMod = 1 - util.remap(util.clamp(dist, 200, 1000), 200, 1000, 0, 1)
                 --return y + yawMod * (-0.5)
@@ -420,6 +415,7 @@ lockedOnState:set({
         end
     end,
     onExit = function(base)
+        boundingBoxSizeCache = {}
         resetCamera()
         clearControls()
         core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
