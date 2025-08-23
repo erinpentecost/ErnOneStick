@@ -193,15 +193,42 @@ local function isActor(entity)
     return entity.type == types.Actor or entity.type == types.NPC or entity.type == types.Creature
 end
 
+local boundingBoxSizeCache = {}
+
+local function lerpVector3(a, b, t)
+    return a + (b - a) * t
+end
+
+-- easeInOutSine is a smoothing function. t ranges from 0 to 1.
+local function easeInOutSine(t)
+    return -1 * (math.cos(math.pi * t) - 1) / 2
+end
+
+local function easeInSine(x)
+    return 1 - math.cos((x * math.pi) / 2)
+end
+
+local function easeInCubic(x)
+    return x * x * x
+end
+
 local function lockOnPosition(entity)
     local pos = entity:getBoundingBox().center
     if isActor(entity) then
         local sizes = entity:getBoundingBox().halfSize
+        local lastSizes = boundingBoxSizeCache[entity.id] or sizes
+        local dampedSize = lerpVector3(sizes, lastSizes, 0.9)
+        boundingBoxSizeCache[entity.id] = dampedSize
         -- if the actor is tall, offset so we are hopefully looking at their face.
-        if sizes.z * 0.8 > math.max(sizes.x, sizes.y) then
-            pos = pos + entity.rotation:apply(util.vector3(0, 0, (sizes.z) * 0.7))
-        end
+        -- this needs to be smooth
+        local zRatio = util.clamp(dampedSize.z / math.max(dampedSize.x, dampedSize.y), 0, 2) / 2
+        -- zRatio is 0 for a flat plane, ~0.5 for a cube, 1 for an actor whose height is twice their base.
+        -- the issue with this is that the bounding box z height can change rapidly during an animation (even walking)
+        -- so it needs to be damped.
+        pos = pos + entity.rotation:apply(util.vector3(0, 0, (dampedSize.z) * zRatio * 0.7))
     end
+
+    --settings.debugPrint(string.format("%.3f", entity:getBoundingBox().center.z) .. " - " .. string.format("%.3f", pos.z))
     return pos
 end
 
@@ -749,11 +776,6 @@ lockSelectionState:set({
     onUpdate = function(s, dt)
     end
 })
-
--- easeInOutSine is a smoothing function. t ranges from 0 to 1.
-local function easeInOutSine(t)
-    return -1 * (math.cos(math.pi * t) - 1) / 2
-end
 
 local function objectAffectsDynamicPitch(entity)
     if entity == nil then
