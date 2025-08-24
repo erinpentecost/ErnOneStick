@@ -59,7 +59,7 @@ local function initSettings()
         name = "modSettingsAdminTitle",
         description = "modSettingsAdminDesc",
         page = MOD_NAME,
-        permanentStorage = false,
+        permanentStorage = true,
         order = 10,
         settings = { {
             key = "disable",
@@ -82,7 +82,7 @@ local function initSettings()
         name = "modSettingsInputTitle",
         description = "modSettingsInputDesc",
         page = MOD_NAME,
-        permanentStorage = false,
+        permanentStorage = true,
         settings = { {
             key = "lockButton",
             name = "lockButton_name",
@@ -189,6 +189,12 @@ local function initSettings()
     print("init settings")
 end
 
+local function onNewGame()
+    -- this works, but we've already read the value and set the camera.
+    SettingsInput:set("travelcam", cameraModes[1])
+    SettingsInput:set("lockedoncam", cameraModes[1])
+end
+
 local lookupFuncTable = {
     __index = function(table, key)
         local inputSetting = SettingsInput:get(key)
@@ -216,6 +222,7 @@ local settingsContainer = {
     disable = disable,
 
     SettingsInput = SettingsInput,
+    onNewGame = onNewGame,
 }
 setmetatable(settingsContainer, lookupFuncTable)
 
