@@ -1117,7 +1117,12 @@ local function onNewGame()
     ui.showMessage(localization("newGameMessage", {}))
 end
 
+local function onSettingsChange(data)
+    print("Settings change. Reloading.")
+    stateMachine:replace(stateMachine:current())
+end
 
+settings.SettingsInput:subscribe(async:callback(onSettingsChange))
 
 
 return {

@@ -68,6 +68,7 @@ local function onNewGame()
         for _, player in ipairs(world.players) do
             player:sendEvent(settings.MOD_NAME .. "onNewGame", {})
         end
+        settings.onNewGame()
     end
 end
 
