@@ -141,12 +141,6 @@ local function initSettings()
                 max = 1,
             }
         }, {
-            key = "runWhileLockedOn",
-            name = "runWhileLockedOn_name",
-            description = "runWhileLockedOn_description",
-            default = true,
-            renderer = "checkbox",
-        }, {
             key = "dynamicPitch",
             name = "dynamicPitch_name",
             description = "dynamicPitch_description",
@@ -158,21 +152,37 @@ local function initSettings()
             description = "autoLockon_description",
             default = true,
             renderer = "checkbox",
-        },
-            {
-                key = "travelcam",
-                name = "travelcam_name",
-                description = "travelcam_description",
-                argument = { items = cameraModes, l10n = MOD_NAME },
-                default = cameraModes[1],
-                renderer = "select",
-            }, {
+        }, {
+            key = "travelcam",
+            name = "travelcam_name",
+            description = "travelcam_description",
+            argument = { items = cameraModes, l10n = MOD_NAME },
+            default = cameraModes[1],
+            renderer = "select",
+        }, {
             key = "lockedoncam",
             name = "lockedoncam_name",
             description = "lockedoncam_description",
             argument = { items = cameraModes, l10n = MOD_NAME },
             default = cameraModes[1],
             renderer = "select",
+        }, {
+            key = "runWhileLockedOn",
+            name = "runWhileLockedOn_name",
+            description = "runWhileLockedOn_description",
+            default = true,
+            renderer = "checkbox",
+        }, {
+            key = "runMinimumFatigue",
+            name = "runMinimumFatigue_name",
+            description = "runMinimumFatigue_description",
+            default = 0,
+            renderer = "number",
+            argument = {
+                integer = true,
+                min = 0,
+                max = 100
+            }
         } }
     }
 
