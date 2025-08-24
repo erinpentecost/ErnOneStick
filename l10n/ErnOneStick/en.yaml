@@ -38,6 +38,9 @@ lockedoncam_description: "Camera point-of-view during locked-on mode."
 runWhileLockedOn_name: "Can Run While Locked On"
 runWhileLockedOn_description: "Set this to false if you have a D-Pad and are running out of Fatigue often during combat."
 
+runMinimumFatigue_name: "Run Minimum Fatigue"
+runMinimumFatigue_description: "Disable running when your current Fatigue percent is lower than this value. If you have an analog stick, just keep this at 0."
+
 disable_name: "Disable Mod"
 disable_description: "Turn the mod off. You will need to reload lua (or save and then reload) afterward."
 

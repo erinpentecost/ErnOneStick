@@ -21,6 +21,7 @@ local radians = require("scripts.ErnOneStick.radians")
 local targetui = require("scripts.ErnOneStick.targetui")
 local keytrack = require("scripts.ErnOneStick.keytrack")
 local targets = require("scripts.ErnOneStick.targets")
+local fatigue = require("scripts.ErnOneStick.fatigue")
 local shaderUtils = require("scripts.ErnOneStick.shader_utils")
 local core = require("openmw.core")
 local pself = require("openmw.self")
@@ -48,6 +49,7 @@ controls.overrideMovementControls(true)
 cameraInterface.disableModeControl(settings.MOD_NAME)
 
 local runThreshold = 0.9
+
 local invertLook = 1
 if settings.invertLookVertical then
     invertLook = -1
@@ -372,6 +374,7 @@ lockedOnState:set({
     lookPosition = util.vector3(0, 0, 0),
     pitchMod = nil,
     yawMod = nil,
+    lowFatigue = false,
     onEnter = function(base)
         clearControls()
         if settings.lockedoncam == "third" then
@@ -390,6 +393,7 @@ lockedOnState:set({
                 --return y + yawMod * (-0.5)
                 return y
             end
+            base.lowFatigue = false
             setThirdPOVSettings()
             camera.setMode(camera.MODE.ThirdPerson, true)
         elseif settings.lockedoncam == "first" then
@@ -455,6 +459,10 @@ lockedOnState:set({
             pself.controls.sideMovement = 0
         end
 
+        if s.base.lowFatigue then
+            shouldRun = false
+        end
+
         pself.controls.run = shouldRun and settings.runWhileLockedOn
     end,
     onUpdate = function(s, dt)
@@ -464,6 +472,8 @@ lockedOnState:set({
             return
         end
         s.base.lookPosition = lockOnPosition(s.base.target)
+
+        s.base.lowFatigue = fatigue.hasLowFatigue()
     end
 })
 
@@ -795,6 +805,7 @@ travelState:set({
     desiredPitch = 0,
     updateCounter = 0,
     onGround = false,
+    lowFatigue = false,
     pitchMod = nil,
     onEnter = function(base)
         if settings.travelcam == "third" then
@@ -809,6 +820,7 @@ travelState:set({
         end
         clearControls()
         base.onGround = types.Actor.isOnGround(pself)
+        base.lowFatigue = false
     end,
     onExit = function(base)
         pself.controls.movement = 0
@@ -846,10 +858,10 @@ travelState:set({
 
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
-            pself.controls.run = keyForward.analog > runThreshold
+            pself.controls.run = (keyForward.analog > runThreshold) and (s.base.lowFatigue ~= true)
         elseif keyBackward.pressed then
             pself.controls.movement = -1 * keyBackward.analog
-            pself.controls.run = keyBackward.analog > runThreshold
+            pself.controls.run = (keyBackward.analog > runThreshold) and (s.base.lowFatigue ~= true)
         else
             pself.controls.movement = 0
             pself.controls.run = false
@@ -867,6 +879,8 @@ travelState:set({
         if s.base.onGround == false then
             return
         end
+
+        s.base.lowFatigue = fatigue.hasLowFatigue()
 
         if settings.dynamicPitch == false then
             s.base.desiredPitch = 0
