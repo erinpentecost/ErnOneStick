@@ -1,1 +1,48 @@
+name: "ErnOneStick"
+description: "Spela Morrowind med endast en styrspak (istället för två)."
 
+newGameMessage: "Du behöver tilldela en 'sikta på'-knapp i modinställningarna."
+
+modSettingsTitle: "Modinställningar"
+modSettingsDesc: "Ändra hur modden fungerar."
+
+modSettingsInputTitle: "Input"
+modSettingsInputDesc: "Ändra kontrollinställningarna."
+
+modSettingsAdminTitle: "Admin"
+modSettingsAdminDesc: "Administrativa inställningar."
+
+lockButton_name: "'Sikta på'-knapp"
+lockButton_description: "Knapp som används för att låsa siktet. Välj 'N/A' eller 'Inget' till höger och sedan knappen du vill tilldela."
+
+lookSensitivityVertical_name: "Synfältskänslighet (vertikalt)"
+lookSensitivityHorizontal_name: "Synfältskänslighet (horisontellt)"
+invertLookVertical_name: "Invertera vertikal synfältsriktning"
+freeLookZoom_name: "Fritt synfält-zoom"
+volume_name: "Ljudeffektsvolym"
+
+# dynamicPitch_name: "Dynamic Pitch"
+# dynamicPitch_description: "Adjust pitch on-the-fly during travel mode. Turn this off if you have FPS issues or motion sickness."
+
+travelcam_name: "Kameraperspektiv - Reseläge"
+travelcam_description: "Kamerans perspektiv vid reseläge (första- eller tredjepersonsperspektiv)."
+first: "Första"
+third: "Tredje"
+
+autoLockon_name: "Automatskt sikte"
+autoLockon_description: "Byt automatiskt till 'låst sikte'-läge när du stöter på en icke-spelbar person eller figur vid reseläge eller fritt synflältsläge."
+
+lockedoncam_name: "Kameraperspektiv - Låst sikte"
+lockedoncam_description: "Kameraperspektiv vid 'låst sikte'-läge."
+
+runWhileLockedOn_name: "Tillåt att springa när siktet är låst"
+runWhileLockedOn_description: "Välj 'falskt' om du har en D-pad och du ofta får slut på 'Fatigue' under strider."
+
+runMinimumFatigue_name: "Minsta 'Fatigue' för att springa"
+runMinimumFatigue_description: "Inaktivera att springa om din aktuella 'Fatigue' blir lägre än detta värde. Låt inställningen vara på 0 om du har en analog styrspak."
+
+disable_name: "Inaktivera modden"
+disable_description: "Stänger av modden. Du behöver ladda om Lua (eller spara och ladda om spelet) efteråt."
+
+debugMode_name: "Felsökningsläge"
+debugMode_description: "Aktivera felmeddelanden i loggen. Aktivera denna funktion och spara loggen om du vill rapportera ett problem."
