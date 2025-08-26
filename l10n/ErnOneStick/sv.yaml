@@ -21,8 +21,8 @@ invertLookVertical_name: "Invertera vertikal synfältsriktning"
 freeLookZoom_name: "Fritt synfält-zoom"
 volume_name: "Ljudeffektsvolym"
 
-# dynamicPitch_name: "Dynamic Pitch"
-# dynamicPitch_description: "Adjust pitch on-the-fly during travel mode. Turn this off if you have FPS issues or motion sickness."
+dynamicPitch_name: "Dynamisk kameravinkel"
+dynamicPitch_description: "Justerar kamerans synvinkel automatiskt under reseläge. Stäng av denna funktion om du får problem med FPS eller åksjuka."
 
 travelcam_name: "Kameraperspektiv - Reseläge"
 travelcam_description: "Kamerans perspektiv vid reseläge (första- eller tredjepersonsperspektiv)."
