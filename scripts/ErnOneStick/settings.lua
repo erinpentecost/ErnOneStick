@@ -167,6 +167,12 @@ local function initSettings()
             default = cameraModes[1],
             renderer = "select",
         }, {
+            key = "combineToggles",
+            name = "combineToggles_name",
+            description = "combineToggles_description",
+            default = false,
+            renderer = "checkbox",
+        }, {
             key = "runWhileLockedOn",
             name = "runWhileLockedOn_name",
             description = "runWhileLockedOn_description",

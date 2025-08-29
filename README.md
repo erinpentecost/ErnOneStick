@@ -39,6 +39,10 @@ The shader is copied from [Max Yari's Dynamic camera effects and target lock](ht
 - Breath In by mooncubedesign -- https://freesound.org/s/319247/ -- License: Creative Commons 0
 - cancel.wav by pierrecartoons1979 -- https://freesound.org/s/90119/ -- License: Attribution NonCommercial 3.0
 
+### Code snippets
+
+Some code is copied from the [penMW project](https://github.com/OpenMW/openmw/). The sections are called out in comments.
+
 ## Contributing
 
 Submit a merge request or file an issue in the [GitHub repo](https://github.com/erinpentecost/ErnOneStick). Any code submitted must be your own work. See the [CONTRIBUTING document](https://github.com/erinpentecost/ErnOneStick/blob/main/CONTRIBUTING) for more info.
