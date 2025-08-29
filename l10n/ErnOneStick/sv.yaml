@@ -22,7 +22,7 @@ freeLookZoom_name: "Fritt synfält-zoom"
 volume_name: "Ljudeffektsvolym"
 
 dynamicPitch_name: "Dynamisk kameravinkel"
-dynamicPitch_description: "Justerar kamerans synvinkel automatiskt under reseläge. Stäng av denna funktion om du får problem med FPS eller åksjuka."
+dynamicPitch_description: "Justerar kamerans synvinkel (runt lateralaxeln, dvs kameran vinklas uppåt eller nedåt) automatiskt under reseläge. Stäng av denna funktion om du får problem med FPS eller åksjuka."
 
 travelcam_name: "Kameraperspektiv - Reseläge"
 travelcam_description: "Kamerans perspektiv vid reseläge (första- eller tredjepersonsperspektiv)."
