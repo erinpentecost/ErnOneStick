@@ -92,6 +92,9 @@ local function controlsAllowed()
 end
 local startUse = false
 input.registerActionHandler('Use', async:callback(function(value)
+    if settings.combineToggles ~= true then
+        return
+    end
     if value and controlsAllowed() then startUse = true end
 end))
 local function processAttacking()
@@ -107,6 +110,9 @@ local function processAttacking()
     startUse = false
 end
 local function onFrame(_)
+    if settings.combineToggles ~= true then
+        return
+    end
     if controlsAllowed() then
         processAttacking()
     end
