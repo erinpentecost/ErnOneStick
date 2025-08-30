@@ -20,6 +20,7 @@ local pself = require("openmw.self")
 local async = require("openmw.async")
 local types = require('openmw.types')
 local ui = require("openmw.interfaces").UI
+local keytrack = require("scripts.ErnOneStick.keytrack")
 local core = require("openmw.core")
 local input = require('openmw.input')
 local controls = require('openmw.interfaces').Controls
@@ -29,19 +30,21 @@ if settings.disable() then
     return
 end
 
-local function override()
-    if settings.combineToggles ~= true then
-        controls.overrideCombatControls(false)
-        return
-    end
-    controls.overrideCombatControls(true)
-end
+input.registerAction {
+    key = settings.MOD_NAME .. "ToggleButton",
+    type = input.ACTION_TYPE.Boolean,
+    l10n = settings.MOD_NAME,
+    defaultValue = false,
+}
+
+local toggleKey = keytrack.NewKey("toggle",
+    function(dt) return input.getBooleanActionValue(settings.MOD_NAME .. "ToggleButton") end)
 
 local function canDoMagic()
     local hasSpell = (types.Actor.getSelectedEnchantedItem(pself) ~= nil) or (types.Actor.getSelectedSpell(pself) ~= nil)
 
-    return types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Magic) and
-        (types.Player.isWerewolf(pself) ~= true) and hasSpell
+    return hasSpell and types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Magic) and
+        (types.Player.isWerewolf(pself) ~= true)
 end
 
 local function canDoFighting()
@@ -49,10 +52,6 @@ local function canDoFighting()
 end
 
 local function toggle()
-    override()
-    if settings.combineToggles ~= true then
-        return
-    end
     -- Nothing -> Spell -> Weapon -> Nothing
     if types.Actor.getStance(pself) == types.Actor.STANCE.Nothing then
         if canDoMagic() then
@@ -78,43 +77,37 @@ local function toggle()
     end
 end
 
-input.registerTriggerHandler('ToggleSpell', async:callback(function() toggle() end))
-input.registerTriggerHandler('ToggleWeapon', async:callback(function() toggle() end))
-
-
--- The below section is modified from openmw's playercontrols.lua
--- It's reproduced here because if you override the Toggle buttons you also end up overriding this one.
--- https://github.com/OpenMW/openmw/blob/60d31e978aed4001b36277720ad3406d0a005c4d/files/data/scripts/omw/input/playercontrols.lua#L45
 local function controlsAllowed()
     return not core.isWorldPaused()
         and types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Controls)
         and not ui.getMode()
 end
-local startUse = false
-input.registerActionHandler('Use', async:callback(function(value)
-    if settings.combineToggles ~= true then
+
+local longPressHandled = false
+local pressedDuration = 0
+local function onFrame(dt)
+    toggleKey:update(dt)
+    if controlsAllowed() == false then
+        pressedDuration = 0
+        longPressHandled = false
         return
     end
-    if value and controlsAllowed() then startUse = true end
-end))
-local function processAttacking()
-    -- for spell-casting, set controls.use to true for exactly one frame
-    -- otherwise spell casting is attempted every frame while Use is true
-    if types.Actor.getStance(pself) == types.Actor.STANCE.Spell then
-        pself.controls.use = startUse and 1 or 0
-    elseif types.Actor.getStance(pself) == types.Actor.STANCE.Weapon and input.getBooleanActionValue('Use') then
-        pself.controls.use = 1
-    else
-        pself.controls.use = 0
+    if toggleKey.pressed then
+        pressedDuration = pressedDuration + dt
     end
-    startUse = false
-end
-local function onFrame(_)
-    if settings.combineToggles ~= true then
-        return
+    if longPressHandled == false and pressedDuration > 0.2 then
+        settings.debugPrint("toggle sneak")
+        pself.controls.sneak = not pself.controls.sneak
+        longPressHandled = true
     end
-    if controlsAllowed() then
-        processAttacking()
+
+    if toggleKey.fall then
+        if longPressHandled == false then
+            settings.debugPrint("toggle stance")
+            toggle()
+        end
+        pressedDuration = 0
+        longPressHandled = false
     end
 end
 
