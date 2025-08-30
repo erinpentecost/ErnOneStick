@@ -259,7 +259,6 @@ end)
 local keySneak = keytrack.NewKey("sneak",
     function(dt) return input.getBooleanActionValue("Sneak") end)
 
-
 -- Jump is a trigger, not an action.
 input.registerTriggerHandler("Jump", async:callback(function() pself.controls.jump = true end))
 
@@ -274,12 +273,10 @@ for k, v in pairs(input.triggers) do
 end
 
 -- Have to recreate sneak toggle.
-local sneaking = false
 local function handleSneak(dt)
     keySneak:update(dt)
     if keySneak.rise then
-        sneaking = sneaking ~= true
-        pself.controls.sneak = sneaking
+        pself.controls.sneak = not pself.controls.sneak
     end
 end
 
@@ -912,7 +909,7 @@ travelState:set({
                 -- bottom of the water is close enough. Can't win them all, I guess.
                 collisionType = nearby.COLLISION_TYPE.HeightMap + nearby.COLLISION_TYPE.World +
                     nearby.COLLISION_TYPE.Water,
-                radius = 1
+                radius = 2
             }
         )
 

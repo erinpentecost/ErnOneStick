@@ -167,11 +167,17 @@ local function initSettings()
             default = cameraModes[1],
             renderer = "select",
         }, {
-            key = "combineToggles",
-            name = "combineToggles_name",
-            description = "combineToggles_description",
-            default = false,
-            renderer = "checkbox",
+            key = "toggleButton",
+            name = "toggleButton_name",
+            description = "toggleButton_description",
+            -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
+            default = "Y",
+            -- this doesn't actually work
+            renderer = "inputBinding",
+            argument = {
+                key = MOD_NAME .. "ToggleButton",
+                type = "action"
+            },
         }, {
             key = "runWhileLockedOn",
             name = "runWhileLockedOn_name",
