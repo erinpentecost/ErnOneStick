@@ -13,6 +13,9 @@ In *target selection mode*, push your stick up or down to cycle through actor ta
 
 In *lock-on mode*, your camera will remain pinned on your target. Your stick moves back and forward and strafes. Tap the Lock Button to go back to *travel mode*.
 
+## Super Toggle Button
+You can optionally map a multi-function toggle key, if you are running out of buttons. Tap it to cycle through Hands Down, Ready Spell, and Ready Weapon. Long press to toggle Sneak.
+
 ## Installing
 
 Download the [latest version here](https://github.com/erinpentecost/ErnOneStick/archive/refs/heads/main.zip). The mod's Nexus page is [here](https://www.nexusmods.com/morrowind/mods/57315).
@@ -38,10 +41,6 @@ The shader is copied from [Max Yari's Dynamic camera effects and target lock](ht
 - ping.mp3 by jolup123 -- https://freesound.org/s/668790/ -- License: Creative Commons 0
 - Breath In by mooncubedesign -- https://freesound.org/s/319247/ -- License: Creative Commons 0
 - cancel.wav by pierrecartoons1979 -- https://freesound.org/s/90119/ -- License: Attribution NonCommercial 3.0
-
-### Code snippets
-
-Some code is copied from the [penMW project](https://github.com/OpenMW/openmw/). The sections are called out in comments.
 
 ## Contributing
 
