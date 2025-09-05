@@ -780,21 +780,34 @@ lockSelectionState:set({
     end
 })
 
+local objectsAffectingPitch = {
+    ["In_prison_ship"] = true,
+    ["chargen_plank"] = true,
+    ["ex_common_plat_end"] = true,
+    ["ex_de_docks_steps_01"] = true,
+}
+
 local function objectAffectsDynamicPitch(entity)
     if entity == nil then
+        --settings.debugPrint("pitch: hit nil")
         return true
     end
     if entity.type ~= types.Static then
+        --settings.debugPrint("pitch: hit non-static " .. entity.recordId)
         return false
+    end
+    if objectsAffectingPitch[entity.recordId] then
+        --settings.debugPrint("pitch: hit force-listed " .. entity.recordId)
+        return true
     end
     -- only pitch for high-volume objects (like stairs and buildings)
     local boxLengths = entity:getBoundingBox().halfSize * 2
     local volume = boxLengths.x * boxLengths.y * boxLengths.z
 
-    --[[settings.debugPrint("hit " .. entity.recordId .. " - " ..
-        tostring(volume))]]
-
-    return volume > 1500000
+    local affects = volume > 1500000
+    --settings.debugPrint("pitch: hit static item " .. entity.recordId .. " - " ..
+    --        tostring(affects))
+    return affects
 end
 
 travelState:set({
@@ -894,9 +907,9 @@ travelState:set({
         local zHalfHeight = pself:getBoundingBox().halfSize.z
         -- positive Z is up.
 
-        local facing = pself.rotation:apply(util.vector3(0, 1, 0)):normalize()
-        facing = util.vector3(facing.x, facing.y, 0)
-        local leadingPosition = camera.getTrackedPosition() + (facing * 1.8 * pself:getBoundingBox().halfSize.y)
+        local facing = pself.rotation:apply(util.vector3(0, 1, 0))
+        facing = util.vector3(facing.x, facing.y, 0):normalize()
+        local leadingPosition = camera.getTrackedPosition() + (facing * 100)
 
         local downward = util.vector3(leadingPosition.x, leadingPosition.y,
             leadingPosition.z - (10 * zHalfHeight))
@@ -913,7 +926,19 @@ travelState:set({
             }
         )
 
+        -- if we get a hit, do a second hit further ahead.
+        --[[if castResult.hit and objectAffectsDynamicPitch(castResult.hitObject) then
+            local leadingPosition = camera.getTrackedPosition() + (facing * 1.8 * pself:getBoundingBox().halfSize.y)
+
+            local downward = util.vector3(leadingPosition.x, leadingPosition.y,
+                leadingPosition.z - (10 * zHalfHeight))
+        end]]
+
+
         if castResult.hit and objectAffectsDynamicPitch(castResult.hitObject) then
+            --settings.debugPrint("pzed: " ..
+            --                string.format("%.3f", pself.position.z) .. ", hitzed: " .. string.format("%.3f", castResult.hitPos.z))
+
             -- we hit the ground.
             -- I don't want the z-length between the camera and the hitposition.
             -- I want the difference between the hit position and the leading position.
