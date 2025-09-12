@@ -121,6 +121,12 @@ local function initSettings()
             default = false,
             renderer = "checkbox"
         }, {
+            key = "enableShaders",
+            name = "enableShaders_name",
+            description = "enableShaders_description",
+            default = false,
+            renderer = "checkbox",
+        }, {
             key = "freeLookZoom",
             name = "freeLookZoom_name",
             default = 1.2,

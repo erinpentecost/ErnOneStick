@@ -32,6 +32,9 @@ travelcam_description: "Camera point-of-view during travel mode."
 first: "First"
 third: "Third"
 
+enableShaders_name: "Enable Shaders"
+enableShaders_description: "Turn this off if you're running GLES (Portmaster)."
+
 autoLockon_name: "Automatic Lock-On"
 autoLockon_description: "In Travel or Freelook mode, automatically transition directly to Locked-On mode when you hit an NPC or Creature."
 

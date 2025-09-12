@@ -15,6 +15,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
+local settings = require("scripts.ErnOneStick.settings")
 local postprocessing = require('openmw.postprocessing')
 
 local ShaderWrapper = {}
@@ -65,7 +66,7 @@ end
 function HandleShaders(dt)
     for _, shader in pairs(shaderInstances) do
         if shader.tweener then shader.tweener:tick(dt) end
-        if shader.enabled then
+        if shader.enabled and settings.enableShaders then
             shader.shader:enable()
         else
             shader.shader:disable()
