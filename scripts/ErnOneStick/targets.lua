@@ -63,15 +63,17 @@ function TargetCollection:sort()
     self.sorted = true
 end
 
-function TargetCollection:next()
+function TargetCollection:next(peek)
     self:sort()
     if #(self.gameObjects) == 0 then
         return nil
     end
-    self.currentIdx = self.currentIdx + 1
 
-    if self.currentIdx > #(self.gameObjects) then
-        self.currentIdx = 1
+    if not peek then
+        self.currentIdx = self.currentIdx + 1
+        if self.currentIdx > #(self.gameObjects) then
+            self.currentIdx = 1
+        end
     end
 
     -- make sure object is still ok.
@@ -82,14 +84,17 @@ function TargetCollection:next()
     return self.gameObjects[self.currentIdx]
 end
 
-function TargetCollection:previous()
+function TargetCollection:previous(peek)
     self:sort()
     if #(self.gameObjects) == 0 then
         return nil
     end
-    self.currentIdx = self.currentIdx - 1
-    if self.currentIdx <= 0 then
-        self.currentIdx = #(self.gameObjects)
+
+    if not peek then
+        self.currentIdx = self.currentIdx - 1
+        if self.currentIdx <= 0 then
+            self.currentIdx = #(self.gameObjects)
+        end
     end
 
     -- make sure object is still ok.

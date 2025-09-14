@@ -9,6 +9,9 @@ modSettingsDesc: "Change how the mod works."
 modSettingsInputTitle: "Inputs"
 modSettingsInputDesc: "Change the control scheme."
 
+modSettingsDPADTitle: "D-PAD"
+modSettingsDPADDesc: "If you have zero analogue sticks (only a Directional Pad), you'll be interested in these settings."
+
 modSettingsAdminTitle: "Admin"
 modSettingsAdminDesc: "Administrative settings."
 
@@ -42,10 +45,13 @@ lockedoncam_name: "Camera POV - Locked-On"
 lockedoncam_description: "Camera point-of-view during locked-on mode."
 
 runWhileLockedOn_name: "Can Run While Locked On"
-runWhileLockedOn_description: "Set this to false if you have a D-Pad and are running out of Fatigue often during combat."
+runWhileLockedOn_description: "Set this to false if you are running out of Fatigue often during combat."
 
 runMinimumFatigue_name: "Run Minimum Fatigue"
 runMinimumFatigue_description: "Disable running when your current Fatigue percent is lower than this value. If you have an analog stick, just keep this at 0."
+
+runWhenReadied_name: "Run While Readied"
+runWhenReadied_description: "Always run when you have your Spell or Weapon ready while in Travel mode. Bypasses 'Run Minimum Fatigue'."
 
 disable_name: "Disable Mod"
 disable_description: "Turn the mod off. You will need to reload lua (or save and then reload) afterward."
