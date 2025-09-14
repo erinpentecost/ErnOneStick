@@ -20,6 +20,7 @@ local storage = require("openmw.storage")
 local MOD_NAME = "ErnOneStick"
 
 local SettingsInput = storage.globalSection("SettingsInput" .. MOD_NAME)
+local SettingsDPAD = storage.globalSection("SettingsDPAD" .. MOD_NAME)
 local SettingsAdmin = storage.globalSection("SettingsAdmin" .. MOD_NAME)
 
 local function debugMode()
@@ -74,6 +75,44 @@ local function initSettings()
             default = false,
             renderer = "checkbox"
         } }
+    }
+
+    interfaces.Settings.registerGroup {
+        key = "SettingsDPAD" .. MOD_NAME,
+        l10n = MOD_NAME,
+        name = "modSettingsDPADTitle",
+        description = "modSettingsDPADDesc",
+        page = MOD_NAME,
+        permanentStorage = true,
+        order = 15,
+        settings = {
+            {
+                key = "runWhileLockedOn",
+                name = "runWhileLockedOn_name",
+                description = "runWhileLockedOn_description",
+                default = true,
+                renderer = "checkbox",
+            },
+            {
+                key = "runMinimumFatigue",
+                name = "runMinimumFatigue_name",
+                description = "runMinimumFatigue_description",
+                default = 0,
+                renderer = "number",
+                argument = {
+                    integer = true,
+                    min = 0,
+                    max = 100
+                }
+            },
+            {
+                key = "runWhenReadied",
+                name = "runWhenReadied_name",
+                description = "runWhenReadied_description",
+                default = false,
+                renderer = "checkbox",
+            }
+        }
     }
 
     interfaces.Settings.registerGroup {
@@ -184,23 +223,6 @@ local function initSettings()
                 key = MOD_NAME .. "ToggleButton",
                 type = "action"
             },
-        }, {
-            key = "runWhileLockedOn",
-            name = "runWhileLockedOn_name",
-            description = "runWhileLockedOn_description",
-            default = true,
-            renderer = "checkbox",
-        }, {
-            key = "runMinimumFatigue",
-            name = "runMinimumFatigue_name",
-            description = "runMinimumFatigue_description",
-            default = 0,
-            renderer = "number",
-            argument = {
-                integer = true,
-                min = 0,
-                max = 100
-            }
         } }
     }
 
@@ -218,6 +240,11 @@ local lookupFuncTable = {
         local inputSetting = SettingsInput:get(key)
         if inputSetting ~= nil then
             return inputSetting
+        end
+
+        local dpadSetting = SettingsDPAD:get(key)
+        if dpadSetting ~= nil then
+            return dpadSetting
         end
 
         local adminSetting = SettingsAdmin:get(key)

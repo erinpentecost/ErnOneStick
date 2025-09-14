@@ -816,6 +816,7 @@ travelState:set({
     updateCounter = 0,
     onGround = false,
     lowFatigue = false,
+    alwaysRun = false,
     pitchMod = nil,
     onEnter = function(base)
         if settings.travelcam == "third" then
@@ -868,10 +869,11 @@ travelState:set({
 
         if keyForward.pressed then
             pself.controls.movement = keyForward.analog
-            pself.controls.run = (keyForward.analog > runThreshold) and (s.base.lowFatigue ~= true)
+            pself.controls.run = s.base.alwaysRun or ((keyForward.analog > runThreshold) and (s.base.lowFatigue ~= true))
         elseif keyBackward.pressed then
             pself.controls.movement = -1 * keyBackward.analog
-            pself.controls.run = (keyBackward.analog > runThreshold) and (s.base.lowFatigue ~= true)
+            pself.controls.run = s.base.alwaysRun or
+            ((keyBackward.analog > runThreshold) and (s.base.lowFatigue ~= true))
         else
             pself.controls.movement = 0
             pself.controls.run = false
@@ -891,6 +893,7 @@ travelState:set({
         end
 
         s.base.lowFatigue = fatigue.hasLowFatigue()
+        s.base.alwaysRun = settings.runWhenReadied and (types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing)
 
         if settings.dynamicPitch == false then
             s.base.desiredPitch = 0
