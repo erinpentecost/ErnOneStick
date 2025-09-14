@@ -20,6 +20,7 @@ local settings = require("scripts.ErnOneStick.settings")
 local pself = require("openmw.self")
 local ui = require('openmw.ui')
 local util = require('openmw.util')
+local core = require('openmw.core')
 local aux_util = require('openmw_aux.util')
 local aux_ui = require('openmw_aux.ui')
 local interfaces = require("openmw.interfaces")
@@ -123,13 +124,85 @@ local function makeUIForEntity(entity)
 
     rowFlexLayout.content:add(nameLayout)
 
-    return ui.content { {
+    local vFlexLayout = {
+        name = "vflex",
+        type = ui.TYPE.Flex,
+        props = {
+            arrange = ui.ALIGNMENT.Center,
+            horizontal = false,
+        },
+        content = ui.content {},
+    }
+    vFlexLayout.content:add(rowFlexLayout)
+
+    -- is there extra info?
+    if entity.type == types.Door and types.Door.destCell(entity) ~= nil then
+        local destName = types.Door.destCell(entity).name
+        if destName ~= "" and destName ~= nil then
+            local toLayout = {
+                template = interfaces.MWUI.templates.textNormal,
+                type = ui.TYPE.Text,
+                props = {
+                    textAlignH = ui.ALIGNMENT.Center,
+                    textAlignV = ui.ALIGNMENT.Center,
+                    text = "to",
+                },
+            }
+            vFlexLayout.content:add(toLayout)
+            local infoLayout = {
+                template = interfaces.MWUI.templates.textNormal,
+                type = ui.TYPE.Text,
+                props = {
+                    textAlignH = ui.ALIGNMENT.Center,
+                    textAlignV = ui.ALIGNMENT.Center,
+                    text = destName,
+                },
+            }
+            vFlexLayout.content:add(infoLayout)
+        end
+    elseif entity.type == types.NPC then
+        local description = ""
+        -- determine best faction
+        local faction = ""
+        local highestFactionRank = -5
+        for _, f in ipairs(types.NPC.getFactions(entity)) do
+            local rank = types.NPC.getFactionRank(entity, f)
+            local factionRecord = core.factions.records[f]
+            if (not factionRecord.hidden) and rank > highestFactionRank then
+                highestFactionRank = rank
+                faction = factionRecord.name
+            end
+        end
+        if highestFactionRank > -1 then
+            description = faction .. " "
+        end
+
+        local npcRecord = types.NPC.record(entity)
+        local className = types.NPC.classes.record(npcRecord.class).name
+        description = description .. className
+
+        local infoLayout = {
+            template = interfaces.MWUI.templates.textNormal,
+            type = ui.TYPE.Text,
+            props = {
+                textAlignH = ui.ALIGNMENT.Center,
+                textAlignV = ui.ALIGNMENT.Center,
+                text = description,
+            },
+        }
+        vFlexLayout.content:add(infoLayout)
+    end
+
+
+    local rootPaddingLayout = {
         template = interfaces.MWUI.templates.padding,
         props = {
             visible = true
         },
-        content = ui.content { rowFlexLayout }
-    } }
+        content = ui.content { vFlexLayout }
+    }
+
+    return ui.content { rootPaddingLayout }
 end
 
 -- this makes the full target selection widget
