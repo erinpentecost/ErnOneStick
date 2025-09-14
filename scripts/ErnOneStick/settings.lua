@@ -84,7 +84,7 @@ local function initSettings()
         description = "modSettingsDPADDesc",
         page = MOD_NAME,
         permanentStorage = true,
-        order = 15,
+        order = 5,
         settings = {
             {
                 key = "runWhileLockedOn",
