@@ -75,13 +75,65 @@ local function getRecord(entity)
     return entity.type.records[entity.recordId]
 end
 
-local function makeTargetUI(entity)
-    -- headerColor = util.color.rgb(223 / 255, 201 / 255, 159 / 255),
+
+local function makeUIForEntity(entity)
+    local rowFlexLayout = {
+        type = ui.TYPE.Flex,
+        props = {
+            arrange = ui.ALIGNMENT.Center,
+            horizontal = true,
+        },
+        content = ui.content {},
+    }
+
     local color = util.color.rgb(223 / 255, 201 / 255, 159 / 255)
     if isOwned(entity) then
         color = util.color.rgb(255 / 255, 99 / 255, 71 / 255)
     end
 
+    local record = getRecord(entity)
+
+    if record.icon ~= nil then
+        local iconContent = {
+            type = ui.TYPE.Image,
+            alignment = ui.ALIGNMENT.Start,
+            props = {
+                resource = ui.texture {
+                    path = record.icon
+                },
+                size = util.vector2(32, 32)
+            },
+            size = util.vector2(32, 32)
+        }
+        rowFlexLayout.content:add(iconContent)
+    end
+
+    -- https://openmw.readthedocs.io/en/stable/reference/lua-scripting/widgets/text.html#text-widget
+    local nameLayout = {
+        template = interfaces.MWUI.templates.textHeader,
+        type = ui.TYPE.Text,
+        alignment = ui.ALIGNMENT.End,
+        props = {
+            textAlignV = ui.ALIGNMENT.Center,
+            relativePosition = util.vector2(0, 0.5),
+            text = record.name,
+            textColor = color,
+        },
+    }
+
+    rowFlexLayout.content:add(nameLayout)
+
+    return ui.content { {
+        template = interfaces.MWUI.templates.padding,
+        props = {
+            visible = true
+        },
+        content = ui.content { rowFlexLayout }
+    } }
+end
+
+-- this makes the full target selection widget
+local function makeTargetUI(entity)
     -- (0,0) is top left of screen.
     -- default anchor is top-left. 1,0 is top right.
     local lowerBox = ui.create {
@@ -90,28 +142,14 @@ local function makeTargetUI(entity)
         type = ui.TYPE.Container,
         template = interfaces.MWUI.templates.boxSolid,
         props = {
+            --relativePosition = util.vector2(0.5, 0.5),
+            --size = util.vector2(30, 30),
+            --anchor = util.vector2(0.5, 0.5),
             relativePosition = util.vector2(0.5, 0.9),
-            relativeSize = util.vector2(0.1, 1),
             anchor = util.vector2(0.5, 1),
             visible = true
         },
-        content = ui.content { {
-            template = interfaces.MWUI.templates.padding,
-            props = {
-                visible = true
-            },
-            content = ui.content { {
-                relativePosition = util.vector2(0.5, 0.5),
-                size = util.vector2(30, 30),
-                anchor = util.vector2(0.5, 0.5),
-                template = interfaces.MWUI.templates.textHeader,
-                type = ui.TYPE.Text,
-                props = {
-                    text = getRecord(entity).name,
-                    textColor = color,
-                },
-            } },
-        } }
+        content = makeUIForEntity(entity)
     }
     return lowerBox
 end

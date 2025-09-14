@@ -578,7 +578,7 @@ lockSelectionState:set({
                 local dist = getDistance(playerHead, e)
                 -- if the actor is very close, ignore LOS check.
                 -- we were getting problems with mudcrabs (horrible creatures).
-                if dist <= core.getGMST("iMaxActivateDist") / 2 then
+                if dist <= core.getGMST("iMaxActivateDist") * 0.75 then
                     return true
                 end
 
@@ -873,7 +873,7 @@ travelState:set({
         elseif keyBackward.pressed then
             pself.controls.movement = -1 * keyBackward.analog
             pself.controls.run = s.base.alwaysRun or
-            ((keyBackward.analog > runThreshold) and (s.base.lowFatigue ~= true))
+                ((keyBackward.analog > runThreshold) and (s.base.lowFatigue ~= true))
         else
             pself.controls.movement = 0
             pself.controls.run = false
