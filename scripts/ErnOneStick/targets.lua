@@ -34,33 +34,79 @@ function TargetCollection:new(gameObjects, filterFn)
     return collection
 end
 
+-- targetWeight returns a big number if we are looking at the
+-- entity and it is close.
+local function targetWeight(entity)
+    local facing = camera.viewportToWorldVector(util.vector2(0.5, 0.5)):normalize()
+    local relativePos = (pself.position - entity.position)
+    -- dot product returns 0 if at 90*, 1 if codirectional, -1 if opposite.
+    local faceWeight = 100 * (4 + facing:dot(relativePos))
+    return faceWeight / (relativePos:length())
+end
+
+local function xyFacing(v1, v2)
+    return util.vector2(v1.x - v2.x, v1.y - v2.y):normalize()
+end
+local function xyCross(v1, v2)
+    return v1.x * v2.y - v1.y * v2.x
+end
+
 function TargetCollection:sort()
-    -- Objects we are facing are weighted highly.
-    -- Objects that are closer are weighted highly.
     if self.sorted then
         return
     end
+    self.sorted = true
 
-    -- cast to list. delay filtering
+    -- cast to list.
     local filtered = {}
     for _, e in ipairs(self.gameObjects) do
-        table.insert(filtered, e)
+        if self.filterFn(e) then
+            table.insert(filtered, e)
+        end
     end
     self.gameObjects = filtered
 
-    -- could maybe use camera.viewportToWorldVector(0.5, 0.5) instead to get facing.
-    --local facing = pself.rotation:apply(util.vector3(0.0, 1.0, 0.0)):normalize()
-    local facing = camera.viewportToWorldVector(util.vector2(0.5, 0.5)):normalize()
-    -- sort by most weight first
+    -- don't do anything if we don't have any targets
+    if #self.gameObjects == 0 then
+        print("no objects")
+        return
+    end
+
+    -- first, find the most-probable target.
+    local bestTarget = nil
+    local bestTargetWeight = 0
+    for i, e in ipairs(self.gameObjects) do
+        local w = targetWeight(e)
+        if w > bestTargetWeight then
+            bestTargetWeight = w
+            bestTarget = e
+        end
+    end
+    if bestTarget == nil then
+        print("no best object")
+        return
+    end
+
+    -- next, sort all the objects by how left or right they are around that
+    -- best target.
+    -- close by left targets will be left of best,
+    -- close by right targets will right of best.
+    -- we do this by setting the weight of best to 0
+
+    local bestTargetFacing = xyFacing(bestTarget.position, pself.position)
     local weight = {}
     for i, e in ipairs(self.gameObjects) do
-        local relativePos = (pself.position - e.position)
-        -- dot product returns 0 if at 90*, 1 if codirectional, -1 if opposite.
-        local faceWeight = 100 * (4 + facing:dot(relativePos))
-        weight[e.id] = faceWeight / (relativePos:length())
+        if e == bestTarget then
+            weight[e.id] = 0
+            print(e.recordId .. " - BEST!")
+        else
+            local facing = xyFacing(e.position, pself.position)
+            weight[e.id] = (-1) * xyCross(bestTargetFacing, facing)
+            print(e.recordId .. " - " .. weight[e.id] .. " facing(" .. tostring(facing) .. ")")
+        end
     end
+    print(bestTarget.recordId .. " is best." .. " facing(" .. tostring(bestTargetFacing) .. ")")
     table.sort(self.gameObjects, function(a, b) return weight[a.id] < weight[b.id] end)
-    self.sorted = true
 end
 
 function TargetCollection:next(peek)
