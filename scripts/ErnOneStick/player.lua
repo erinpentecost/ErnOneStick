@@ -563,6 +563,7 @@ lockSelectionState:set({
     onEnter = function(base)
         settings.debugPrint("enter state: lockselection")
         clearControls()
+        takeControl(true)
         resetCamera()
         core.sendGlobalEvent(settings.MOD_NAME .. "onPause")
         uiInterface.setHudVisibility(false)
@@ -834,7 +835,6 @@ twoStickTravelState:set({
         takeControl(false)
     end,
     onExit = function(base)
-        controls.overrideMovementControls(true)
         takeControl(true)
     end,
     onFrame = function(s, dt)
@@ -1090,7 +1090,7 @@ freeLookState:set({
     initialMode = nil,
     initialFOV = nil,
     onEnter = function(base)
-        settings.debugPrint("enter state: freeLook. " .. aux_util.deepToString(base, 3))
+        takeControl(true)
         -- this is not resetting base.looking
         base.initialMode = camera.getMode()
         base.initialFOV = camera.getFieldOfView()
