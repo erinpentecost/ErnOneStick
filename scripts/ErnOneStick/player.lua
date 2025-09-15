@@ -298,12 +298,20 @@ stateMachine:push(normalState)
 
 local lockSelectionState = state.NewState()
 local lockedOnState = state.NewState()
-local travelState = state.NewState()
+local oneStickTravelState = state.NewState()
+local twoStickTravelState = state.NewState()
 local preliminaryFreeLookState = state.NewState()
 local freeLookState = state.NewState()
 local uiState = state.NewState()
 local noControlState = state.NewState()
 
+local function getTravelState()
+    if settings.twoStickMode then
+        return twoStickTravelState
+    else
+        return oneStickTravelState
+    end
+end
 
 -- lastHit is the last NPC that was struck by the player.
 local lastHit = nil
@@ -426,7 +434,7 @@ lockedOnState:set({
     end,
     onFrame = function(s, dt)
         if keyLock.rise then
-            stateMachine:replace(travelState)
+            stateMachine:replace(getTravelState())
             return
         end
 
@@ -465,7 +473,7 @@ lockedOnState:set({
     onUpdate = function(s, dt)
         if inWorldSpace(s.base.target) == false then
             settings.debugPrint("target not valid")
-            stateMachine:replace(travelState)
+            stateMachine:replace(getTravelState())
             return
         end
         s.base.lookPosition = lockOnPosition(s.base.target)
@@ -684,7 +692,7 @@ lockSelectionState:set({
                 print("No target on keyLock rise, quitting.")
                 -- no target, so move to travel state.
                 core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
-                stateMachine:replace(travelState)
+                stateMachine:replace(getTravelState())
             end
             return
         end
@@ -745,7 +753,7 @@ lockSelectionState:set({
             })
             core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
             print("No valid target....")
-            stateMachine:replace(travelState)
+            stateMachine:replace(getTravelState())
             return
         end
 
@@ -773,7 +781,7 @@ lockSelectionState:set({
                     player = pself,
                 })
             end
-            stateMachine:replace(travelState)
+            stateMachine:replace(getTravelState())
         end
     end,
     onUpdate = function(s, dt)
@@ -810,8 +818,28 @@ local function objectAffectsDynamicPitch(entity)
     return affects
 end
 
-travelState:set({
-    name = "travelState",
+twoStickTravelState:set({
+    name = "twoStickTravelState",
+    onEnter = function(base)
+        clearControls()
+        controls.overrideMovementControls(false)
+    end,
+    onExit = function(base)
+        controls.overrideMovementControls(true)
+        clearControls()
+    end,
+    onFrame = function(s, dt)
+        if keyLock.rise and types.Actor.canMove(pself) then
+            stateMachine:replace(lockSelectionState)
+            return
+        end
+    end,
+    onUpdate = function(s, dt)
+    end
+})
+
+oneStickTravelState:set({
+    name = "oneStickTravelState",
     desiredPitch = 0,
     updateCounter = 0,
     onGround = false,
@@ -1019,14 +1047,14 @@ preliminaryFreeLookState:set({
     onFrame = function(s, dt)
         --settings.debugPrint(s.name .. ".OnFrame() = " .. aux_util.deepToString(s.base, 3))
         if types.Actor.canMove(pself) == false then
-            stateMachine:replace(travelState)
+            stateMachine:replace(getTravelState())
         end
 
         if keyLock.fall then
             stateMachine:replace(lockSelectionState)
         elseif keyLock.pressed == false then
             -- it's possible that we miss the "fall" frame because we opened an inventory.
-            stateMachine:replace(travelState)
+            stateMachine:replace(getTravelState())
         end
 
         -- we started looking around
@@ -1072,7 +1100,7 @@ freeLookState:set({
     end,
     onFrame = function(s, dt)
         if keyLock.fall then
-            stateMachine:replace(travelState)
+            stateMachine:replace(getTravelState())
             return
         end
 
@@ -1102,7 +1130,7 @@ freeLookState:set({
     end
 })
 
-stateMachine:push(travelState)
+stateMachine:push(getTravelState())
 
 local function onFrame(dt)
     keyLock:update(dt)
@@ -1148,6 +1176,7 @@ local function onSettingsChange(data)
 end
 
 settings.SettingsInput:subscribe(async:callback(onSettingsChange))
+settings.SettingsDPAD:subscribe(async:callback(onSettingsChange))
 
 
 return {
