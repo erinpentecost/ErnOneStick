@@ -27,13 +27,33 @@ data="/wherevermymodsare/mods/ErnOneStick-main"
 content=ErnOneStick.omwscripts
 ```
 
-After installation, **you must assign a button to the Lock Button action in the mod settings.**
+## Configuration
+
+After installation, **you must assign a button to the Lock Button action in the mod settings.** Before mapping buttons, unmap any existing game actions to them.
+
+### One Analogue Stick
+
+- Set a "Lock-On Button".
+- Optionally set a "Toggle Button".
+
+### Zero Analogue Sticks
+
+- Set a "Lock-On Button".
+- Optionally set a "Toggle Button".
+- Set "Run Minimum Fatigue" to 70.
+- Set "Run While Readied" to true.
+
+### Two Analogue Sticks
+
+- Set a "Lock-On Button".
+- Optionally set a "Toggle Button".
+- Set "Two-Stick Mode" to true.
 
 ## Credits
 
 ### Shader
 
-The shader is copied from [Max Yari's Dynamic camera effects and target lock](https://www.nexusmods.com/morrowind/mods/55327) mod, with permission.
+The shader is copied from [Max Yari's Dynamic camera effects and target lock](https://www.nexusmods.com/morrowind/mods/55327) mod, with permission. This is Wareya's DOF shader.
 
 ### Sounds
 

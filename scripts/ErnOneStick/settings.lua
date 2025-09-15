@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local interfaces = require("openmw.interfaces")
 local storage = require("openmw.storage")
+local async = require("openmw.async")
 local MOD_NAME = "ErnOneStick"
 
 local SettingsInput = storage.globalSection("SettingsInput" .. MOD_NAME)
@@ -134,6 +135,12 @@ local function initSettings()
                 key = MOD_NAME .. "LockButton",
                 type = "action"
             },
+        }, {
+            key = "twoStickMode",
+            name = "twoStickMode_name",
+            description = "twoStickMode_description",
+            default = false,
+            renderer = "checkbox",
         }, {
             key = "lookSensitivityHorizontal",
             name = "lookSensitivityHorizontal_name",
@@ -267,6 +274,7 @@ local settingsContainer = {
     disable = disable,
 
     SettingsInput = SettingsInput,
+    SettingsDPAD = SettingsDPAD,
     onNewGame = onNewGame,
 }
 setmetatable(settingsContainer, lookupFuncTable)

@@ -21,6 +21,9 @@ lockButton_description: "The key used to trigger lock-on. Click 'N/A' or 'None' 
 toggleButton_name: "Toggle Button"
 toggleButton_description: "Optional keybind for the combined-toggle button. Hold to toggle sneak, tap to cycle through Hands-Down, Spell Ready, and Weapon Ready."
 
+twoStickMode_name: "Two-Stick Mode"
+twoStickMode_description: "Use normal movement controls during travel mode. Enable this if you have two sticks."
+
 lookSensitivityVertical_name: "Look Sensitivity (Vertical)"
 lookSensitivityHorizontal_name: "Look Sensitivity (Horizontal)"
 invertLookVertical_name: "Invert Vertical Look Direction"
