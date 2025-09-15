@@ -835,7 +835,6 @@ twoStickTravelState:set({
     end,
     onExit = function(base)
         controls.overrideMovementControls(true)
-        cameraInterface.disableModeControl(settings.MOD_NAME)
         takeControl(true)
     end,
     onFrame = function(s, dt)
