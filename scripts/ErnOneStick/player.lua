@@ -45,8 +45,17 @@ if settings.disable() then
     return
 end
 
-controls.overrideMovementControls(true)
-cameraInterface.disableModeControl(settings.MOD_NAME)
+local function takeControl(assumeControl)
+    if assumeControl then
+        controls.overrideMovementControls(true)
+        cameraInterface.disableModeControl(settings.MOD_NAME)
+    else
+        controls.overrideMovementControls(false)
+        cameraInterface.enableModeControl(settings.MOD_NAME)
+    end
+end
+
+takeControl(not settings.twoStickMode)
 
 local runThreshold = 0.9
 
@@ -331,10 +340,10 @@ uiState:set({
     name = "uiState",
     onEnter = function(base)
         clearControls()
-        controls.overrideMovementControls(false)
+        takeControl(false)
     end,
     onExit = function(base)
-        controls.overrideMovementControls(true)
+        takeControl(not settings.twoStickMode)
     end,
     onFrame = function(s, dt)
         if uiInterface.getMode() == nil then
@@ -822,11 +831,12 @@ twoStickTravelState:set({
     name = "twoStickTravelState",
     onEnter = function(base)
         clearControls()
-        controls.overrideMovementControls(false)
+        takeControl(false)
     end,
     onExit = function(base)
         controls.overrideMovementControls(true)
-        clearControls()
+        cameraInterface.disableModeControl(settings.MOD_NAME)
+        takeControl(true)
     end,
     onFrame = function(s, dt)
         if keyLock.rise and types.Actor.canMove(pself) then
