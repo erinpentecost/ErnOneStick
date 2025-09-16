@@ -1175,8 +1175,8 @@ local function UiModeChanged(data)
     end
 end
 
-local function onNewGame()
-    ui.showMessage(localization("newGameMessage", {}))
+local function onFirstRun()
+    ui.showMessage(localization("firstRunMessage", {}))
 end
 
 local function onSettingsChange(data)
@@ -1191,7 +1191,7 @@ settings.SettingsDPAD:subscribe(async:callback(onSettingsChange))
 return {
     eventHandlers = {
         UiModeChanged = UiModeChanged,
-        [settings.MOD_NAME .. 'onNewGame'] = onNewGame,
+        [settings.MOD_NAME .. 'onFirstRun'] = onFirstRun,
         [settings.MOD_NAME .. 'onStruck'] = onStruck,
     },
     engineHandlers = {

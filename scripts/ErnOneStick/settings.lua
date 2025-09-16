@@ -17,12 +17,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 local interfaces = require("openmw.interfaces")
 local storage = require("openmw.storage")
+local pself = require("openmw.self")
+local world = require("openmw.world")
 local async = require("openmw.async")
 local MOD_NAME = "ErnOneStick"
 
-local SettingsInput = storage.globalSection("SettingsInput" .. MOD_NAME)
-local SettingsDPAD = storage.globalSection("SettingsDPAD" .. MOD_NAME)
-local SettingsAdmin = storage.globalSection("SettingsAdmin" .. MOD_NAME)
+local SettingsInput = storage.playerSection("SettingsInput" .. MOD_NAME)
+local SettingsDPAD = storage.playerSection("SettingsDPAD" .. MOD_NAME)
+local SettingsAdmin = storage.playerSection("SettingsAdmin" .. MOD_NAME)
 
 local function debugMode()
     return SettingsAdmin:get("debugMode")
@@ -52,6 +54,13 @@ local function registerPage()
     }
 end
 
+local function firstRunSetup()
+    print("first run setup")
+    if disable() ~= true then
+        pself:sendEvent(MOD_NAME .. "onNewGame", {})
+    end
+end
+
 local cameraModes = { "first", "third" }
 
 local function initSettings()
@@ -75,6 +84,12 @@ local function initSettings()
             description = "debugMode_description",
             default = false,
             renderer = "checkbox"
+        }, {
+            key = "firstRun",
+            name = "firstRun_name",
+            default = true,
+            renderer = "checkbox",
+            disabled = true,
         } }
     }
 
@@ -234,13 +249,26 @@ local function initSettings()
     }
 
     print("init settings")
+
+    if SettingsAdmin:get("firstRun") then
+        -- do fancy setup here
+        async:newGameTimer(3, async:callback(
+            function()
+                firstRunSetup()
+                SettingsAdmin:set("firstRun", false)
+            end))
+    end
 end
 
-local function onNewGame()
+initSettings()
+
+--[[local function onNewGame()
+    -- this is special because the camera should be locked down until
+    -- the character is made.
     -- this works, but we've already read the value and set the camera.
     SettingsInput:set("travelcam", cameraModes[1])
     SettingsInput:set("lockedoncam", cameraModes[1])
-end
+    end]]
 
 local lookupFuncTable = {
     __index = function(table, key)
@@ -275,7 +303,6 @@ local settingsContainer = {
 
     SettingsInput = SettingsInput,
     SettingsDPAD = SettingsDPAD,
-    onNewGame = onNewGame,
 }
 setmetatable(settingsContainer, lookupFuncTable)
 

@@ -23,9 +23,6 @@ if require("openmw.core").API_REVISION < 62 then
     error("OpenMW 0.49 or newer is required!")
 end
 
--- Init settings first to init storage which is used everywhere.
-settings.initSettings()
-
 local function onPause()
     world.pause(settings.MOD_NAME)
 end
@@ -63,14 +60,11 @@ local function onUpdate(dt)
     end
 end
 
-local function onNewGame()
+--[[local function onNewGame()
     if settings.disable() ~= true then
-        for _, player in ipairs(world.players) do
-            player:sendEvent(settings.MOD_NAME .. "onNewGame", {})
-        end
         settings.onNewGame()
     end
-end
+    end]]
 
 return {
     eventHandlers = {
@@ -81,6 +75,6 @@ return {
     },
     engineHandlers = {
         onUpdate = onUpdate,
-        onNewGame = onNewGame
+        --onNewGame = onNewGame
     }
 }
