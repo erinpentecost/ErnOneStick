@@ -38,7 +38,7 @@ local nearby = require('openmw.nearby')
 local cameraInterface = require("openmw.interfaces").Camera
 local uiInterface = require("openmw.interfaces").UI
 
-settings.registerPage()
+settings.initSettings()
 
 if settings.disable() then
     print(settings.MOD_NAME .. " is disabled.")
@@ -1175,10 +1175,6 @@ local function UiModeChanged(data)
     end
 end
 
-local function onNewGame()
-    ui.showMessage(localization("newGameMessage", {}))
-end
-
 local function onSettingsChange(data)
     print("Settings change. Reloading.")
     stateMachine:replace(stateMachine:current())
@@ -1191,7 +1187,6 @@ settings.SettingsDPAD:subscribe(async:callback(onSettingsChange))
 return {
     eventHandlers = {
         UiModeChanged = UiModeChanged,
-        [settings.MOD_NAME .. 'onNewGame'] = onNewGame,
         [settings.MOD_NAME .. 'onStruck'] = onStruck,
     },
     engineHandlers = {

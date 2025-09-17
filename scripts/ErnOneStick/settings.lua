@@ -15,14 +15,17 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
+local MOD_NAME = "ErnOneStick"
+local core = require("openmw.core")
 local interfaces = require("openmw.interfaces")
 local storage = require("openmw.storage")
-local async = require("openmw.async")
-local MOD_NAME = "ErnOneStick"
+local ui = require('openmw.ui')
+local localization = core.l10n(MOD_NAME)
 
-local SettingsInput = storage.globalSection("SettingsInput" .. MOD_NAME)
-local SettingsDPAD = storage.globalSection("SettingsDPAD" .. MOD_NAME)
-local SettingsAdmin = storage.globalSection("SettingsAdmin" .. MOD_NAME)
+
+local SettingsInput = storage.playerSection("SettingsInput" .. MOD_NAME)
+local SettingsDPAD = storage.playerSection("SettingsDPAD" .. MOD_NAME)
+local SettingsAdmin = storage.playerSection("SettingsAdmin" .. MOD_NAME)
 
 local function debugMode()
     return SettingsAdmin:get("debugMode")
@@ -43,13 +46,19 @@ local function disable()
     return SettingsAdmin:get("disable")
 end
 
-local function registerPage()
-    interfaces.Settings.registerPage {
-        key = MOD_NAME,
-        l10n = MOD_NAME,
-        name = "name",
-        description = "description"
-    }
+local function firstRunSetup()
+    print("first run setup")
+    if disable() ~= true then
+        -- load in config files here
+        print("lockButton: " .. tostring(SettingsInput:get("lockButton")))
+        print("toggleButton: " .. tostring(SettingsInput:get("toggleButton")))
+    end
+end
+
+local function toast()
+    if (disable() ~= true) and tostring(SettingsInput:get("lockButton")) == "" then
+        ui.showMessage(localization("firstRunMessage", {}))
+    end
 end
 
 local cameraModes = { "first", "third" }
@@ -75,6 +84,12 @@ local function initSettings()
             description = "debugMode_description",
             default = false,
             renderer = "checkbox"
+        }, {
+            key = "firstRun",
+            name = "firstRun_name",
+            default = true,
+            renderer = "checkbox",
+            --disabled = true,
         } }
     }
 
@@ -128,7 +143,8 @@ local function initSettings()
             name = "lockButton_name",
             description = "lockButton_description",
             -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
-            default = "RightStick",
+            --default = "RightStick",
+            default = "",
             -- this doesn't actually work
             renderer = "inputBinding",
             argument = {
@@ -223,8 +239,9 @@ local function initSettings()
             name = "toggleButton_name",
             description = "toggleButton_description",
             -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
-            default = "Y",
+            --default = "Y",
             -- this doesn't actually work
+            default = "",
             renderer = "inputBinding",
             argument = {
                 key = MOD_NAME .. "ToggleButton",
@@ -233,13 +250,22 @@ local function initSettings()
         } }
     }
 
-    print("init settings")
-end
+    interfaces.Settings.registerPage {
+        key = MOD_NAME,
+        l10n = MOD_NAME,
+        name = "name",
+        description = "description"
+    }
 
-local function onNewGame()
-    -- this works, but we've already read the value and set the camera.
-    SettingsInput:set("travelcam", cameraModes[1])
-    SettingsInput:set("lockedoncam", cameraModes[1])
+    print("init settings")
+
+    if SettingsAdmin:get("firstRun") then
+        -- do fancy setup here
+        firstRunSetup()
+        SettingsAdmin:set("firstRun", false)
+    end
+
+    toast()
 end
 
 local lookupFuncTable = {
@@ -267,15 +293,12 @@ local settingsContainer = {
     initSettings = initSettings,
     MOD_NAME = MOD_NAME,
 
-    registerPage = registerPage,
-
     debugMode = debugMode,
     debugPrint = debugPrint,
     disable = disable,
 
     SettingsInput = SettingsInput,
     SettingsDPAD = SettingsDPAD,
-    onNewGame = onNewGame,
 }
 setmetatable(settingsContainer, lookupFuncTable)
 

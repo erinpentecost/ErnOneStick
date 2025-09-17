@@ -1,7 +1,7 @@
 name: "ErnOneStick"
 description: "Spela Morrowind med endast en styrspak (istället för två)."
 
-newGameMessage: "Du behöver tilldela en 'sikta på'-knapp i modinställningarna."
+firstRunMessage: "Du behöver tilldela en 'sikta på'-knapp i modinställningarna."
 
 modSettingsTitle: "Modinställningar"
 modSettingsDesc: "Ändra hur modden fungerar."

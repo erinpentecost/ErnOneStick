@@ -1,7 +1,7 @@
 name: "ErnOneStick"
 description: "Play Morrowind with just one analogue stick (instead of two)."
 
-newGameMessage: "You must map a Lock-On Button in the ErnOneStick mod settings."
+firstRunMessage: "You must map a Lock-On Button in the ErnOneStick mod settings."
 
 modSettingsTitle: "Mod Options"
 modSettingsDesc: "Change how the mod works."
@@ -61,3 +61,5 @@ disable_description: "Turn the mod off. You will need to reload lua (or save and
 
 debugMode_name: "Debug Mode"
 debugMode_description: "Turn on verbose logging. Please turn this on and grab the log if you are going to report an issue."
+
+firstRun_name: "(First Run)"

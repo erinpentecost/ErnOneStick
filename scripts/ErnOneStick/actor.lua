@@ -15,18 +15,14 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local settings = require("scripts.ErnOneStick.settings")
 local pself = require("openmw.self")
 local combat = require('openmw.interfaces').Combat
 
-if require("openmw.core").API_REVISION < 77 then
-    settings.debugPrint("Auto-lockon is disabled because this version of openMW is too old.")
-    return
-end
+local MOD_NAME = "ErnOneStick"
 
 combat.addOnHitHandler(function(attackInfo)
     if attackInfo ~= nil and attackInfo.attacker ~= nil then
-        attackInfo.attacker:sendEvent(settings.MOD_NAME .. 'onStruck', {
+        attackInfo.attacker:sendEvent(MOD_NAME .. 'onStruck', {
             target = pself,
         })
     end

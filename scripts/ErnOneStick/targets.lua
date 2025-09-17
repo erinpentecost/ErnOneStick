@@ -38,7 +38,7 @@ end
 -- entity and it is close.
 local function targetWeight(entity)
     local facing = camera.viewportToWorldVector(util.vector2(0.5, 0.5)):normalize()
-    local relativePos = (pself.position - entity.position)
+    local relativePos = (pself:getBoundingBox().center - entity:getBoundingBox().center)
     -- dot product returns 0 if at 90*, 1 if codirectional, -1 if opposite.
     local faceWeight = 100 * (4 + facing:dot(relativePos))
     return faceWeight / (relativePos:length())
@@ -68,7 +68,7 @@ function TargetCollection:sort()
 
     -- don't do anything if we don't have any targets
     if #self.gameObjects == 0 then
-        print("no objects")
+        --print("no objects")
         return
     end
 
@@ -83,7 +83,7 @@ function TargetCollection:sort()
         end
     end
     if bestTarget == nil then
-        print("no best object")
+        --print("no best object")
         return
     end
 
@@ -93,19 +93,19 @@ function TargetCollection:sort()
     -- close by right targets will right of best.
     -- we do this by setting the weight of best to 0
 
-    local bestTargetFacing = xyFacing(bestTarget.position, pself.position)
+    local bestTargetFacing = xyFacing(bestTarget:getBoundingBox().center, pself:getBoundingBox().center)
     local weight = {}
     for i, e in ipairs(self.gameObjects) do
         if e == bestTarget then
             weight[e.id] = 0
-            print(e.recordId .. " - BEST!")
+            --print(e.recordId .. " - BEST!")
         else
-            local facing = xyFacing(e.position, pself.position)
+            local facing = xyFacing(e:getBoundingBox().center, pself:getBoundingBox().center)
             weight[e.id] = (-1) * xyCross(bestTargetFacing, facing)
-            print(e.recordId .. " - " .. weight[e.id] .. " facing(" .. tostring(facing) .. ")")
+            --print(e.recordId .. " - " .. weight[e.id] .. " facing(" .. tostring(facing) .. ")")
         end
     end
-    print(bestTarget.recordId .. " is best." .. " facing(" .. tostring(bestTargetFacing) .. ")")
+    --print(bestTarget.recordId .. " is best." .. " facing(" .. tostring(bestTargetFacing) .. ")")
     table.sort(self.gameObjects, function(a, b) return weight[a.id] < weight[b.id] end)
 end
 

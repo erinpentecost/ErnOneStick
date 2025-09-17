@@ -15,7 +15,6 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local settings = require("scripts.ErnOneStick.settings")
 local world = require('openmw.world')
 local aux_util = require('openmw_aux.util')
 
@@ -23,15 +22,14 @@ if require("openmw.core").API_REVISION < 62 then
     error("OpenMW 0.49 or newer is required!")
 end
 
--- Init settings first to init storage which is used everywhere.
-settings.initSettings()
+local MOD_NAME = "ErnOneStick"
 
 local function onPause()
-    world.pause(settings.MOD_NAME)
+    world.pause(MOD_NAME)
 end
 
 local function onUnpause()
-    world.unpause(settings.MOD_NAME)
+    world.unpause(MOD_NAME)
 end
 
 local function onRotate(data)
@@ -41,11 +39,11 @@ end
 local onNextFrame = nil
 
 local function onActivate(data)
-    settings.debugPrint("onActivate(" .. aux_util.deepToString(data, 3) .. ")...")
+    --settings.debugPrint("onActivate(" .. aux_util.deepToString(data, 3) .. ")...")
     if world.isWorldPaused() then
-        settings.debugPrint("paused; scheduling next-frame activate")
+        --settings.debugPrint("paused; scheduling next-frame activate")
         onNextFrame = function()
-            settings.debugPrint("doing next-frame activate")
+            --settings.debugPrint("doing next-frame activate")
             data.entity:activateBy(data.player)
         end
     else
@@ -63,24 +61,21 @@ local function onUpdate(dt)
     end
 end
 
-local function onNewGame()
+--[[local function onNewGame()
     if settings.disable() ~= true then
-        for _, player in ipairs(world.players) do
-            player:sendEvent(settings.MOD_NAME .. "onNewGame", {})
-        end
         settings.onNewGame()
     end
-end
+    end]]
 
 return {
     eventHandlers = {
-        [settings.MOD_NAME .. "onPause"] = onPause,
-        [settings.MOD_NAME .. "onUnpause"] = onUnpause,
-        [settings.MOD_NAME .. "onRotate"] = onRotate,
-        [settings.MOD_NAME .. "onActivate"] = onActivate,
+        [MOD_NAME .. "onPause"] = onPause,
+        [MOD_NAME .. "onUnpause"] = onUnpause,
+        [MOD_NAME .. "onRotate"] = onRotate,
+        [MOD_NAME .. "onActivate"] = onActivate,
     },
     engineHandlers = {
         onUpdate = onUpdate,
-        onNewGame = onNewGame
+        --onNewGame = onNewGame
     }
 }
