@@ -83,7 +83,7 @@ function TargetCollection:sort()
         end
     end
     if bestTarget == nil then
-        print("no best object")
+        --print("no best object")
         return
     end
 

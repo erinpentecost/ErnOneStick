@@ -15,12 +15,13 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
+local MOD_NAME = "ErnOneStick"
+local core = require("openmw.core")
 local interfaces = require("openmw.interfaces")
 local storage = require("openmw.storage")
-local pself = require("openmw.self")
-local world = require("openmw.world")
-local async = require("openmw.async")
-local MOD_NAME = "ErnOneStick"
+local ui = require('openmw.ui')
+local localization = core.l10n(MOD_NAME)
+
 
 local SettingsInput = storage.playerSection("SettingsInput" .. MOD_NAME)
 local SettingsDPAD = storage.playerSection("SettingsDPAD" .. MOD_NAME)
@@ -45,19 +46,18 @@ local function disable()
     return SettingsAdmin:get("disable")
 end
 
-local function registerPage()
-    interfaces.Settings.registerPage {
-        key = MOD_NAME,
-        l10n = MOD_NAME,
-        name = "name",
-        description = "description"
-    }
-end
-
 local function firstRunSetup()
     print("first run setup")
     if disable() ~= true then
-        pself:sendEvent(MOD_NAME .. "onNewGame", {})
+        -- load in config files here
+        print("lockButton: " .. tostring(SettingsInput:get("lockButton")))
+        print("toggleButton: " .. tostring(SettingsInput:get("toggleButton")))
+    end
+end
+
+local function toast()
+    if (disable() ~= true) and tostring(SettingsInput:get("lockButton")) == "" then
+        ui.showMessage(localization("firstRunMessage", {}))
     end
 end
 
@@ -89,7 +89,7 @@ local function initSettings()
             name = "firstRun_name",
             default = true,
             renderer = "checkbox",
-            disabled = true,
+            --disabled = true,
         } }
     }
 
@@ -143,7 +143,8 @@ local function initSettings()
             name = "lockButton_name",
             description = "lockButton_description",
             -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
-            default = "RightStick",
+            --default = "RightStick",
+            default = "",
             -- this doesn't actually work
             renderer = "inputBinding",
             argument = {
@@ -238,8 +239,9 @@ local function initSettings()
             name = "toggleButton_name",
             description = "toggleButton_description",
             -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
-            default = "Y",
+            --default = "Y",
             -- this doesn't actually work
+            default = "",
             renderer = "inputBinding",
             argument = {
                 key = MOD_NAME .. "ToggleButton",
@@ -248,27 +250,23 @@ local function initSettings()
         } }
     }
 
+    interfaces.Settings.registerPage {
+        key = MOD_NAME,
+        l10n = MOD_NAME,
+        name = "name",
+        description = "description"
+    }
+
     print("init settings")
 
     if SettingsAdmin:get("firstRun") then
         -- do fancy setup here
-        async:newGameTimer(3, async:callback(
-            function()
-                firstRunSetup()
-                SettingsAdmin:set("firstRun", false)
-            end))
+        firstRunSetup()
+        SettingsAdmin:set("firstRun", false)
     end
+
+    toast()
 end
-
-initSettings()
-
---[[local function onNewGame()
-    -- this is special because the camera should be locked down until
-    -- the character is made.
-    -- this works, but we've already read the value and set the camera.
-    SettingsInput:set("travelcam", cameraModes[1])
-    SettingsInput:set("lockedoncam", cameraModes[1])
-    end]]
 
 local lookupFuncTable = {
     __index = function(table, key)
@@ -294,8 +292,6 @@ local lookupFuncTable = {
 local settingsContainer = {
     initSettings = initSettings,
     MOD_NAME = MOD_NAME,
-
-    registerPage = registerPage,
 
     debugMode = debugMode,
     debugPrint = debugPrint,
