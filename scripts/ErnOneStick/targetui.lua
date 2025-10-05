@@ -27,7 +27,6 @@ local interfaces = require("openmw.interfaces")
 local types = require('openmw.types')
 
 -- https://openmw.readthedocs.io/en/stable/reference/lua-scripting/widgets/widget.html#properties
-
 -- https://openmw.readthedocs.io/en/stable/reference/lua-scripting/openmw_ui.html##(Template)
 
 local function atLeastRank(npc, factionID, rank)

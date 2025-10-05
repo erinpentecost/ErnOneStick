@@ -50,16 +50,11 @@ local function firstRunSetup()
     print("first run setup")
     if disable() ~= true then
         -- load in config files here
-        print("lockButton: " .. tostring(SettingsInput:get("lockButton")))
-        print("toggleButton: " .. tostring(SettingsInput:get("toggleButton")))
-    end
-end
 
-local function toast()
-    if (disable() ~= true) and tostring(SettingsInput:get("lockButton")) == "" then
         ui.showMessage(localization("firstRunMessage", {}))
     end
 end
+
 
 local cameraModes = { "first", "third" }
 
@@ -265,7 +260,8 @@ local function initSettings()
         SettingsAdmin:set("firstRun", false)
     end
 
-    toast()
+    print("lockButton: " .. tostring(SettingsInput:get("lockButton")))
+    print("toggleButton: " .. tostring(SettingsInput:get("toggleButton")))
 end
 
 local lookupFuncTable = {
