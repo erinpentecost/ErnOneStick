@@ -277,10 +277,6 @@ local function handleActivate(dt)
     activating = false
 end
 
-for k, v in pairs(input.triggers) do
-    settings.debugPrint(k .. "-" .. v.name)
-end
-
 -- Have to recreate sneak toggle.
 local function handleSneak(dt)
     keySneak:update(dt)
