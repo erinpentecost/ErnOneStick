@@ -23,6 +23,7 @@ local latched = true
 local function hasLowFatigue()
     local min = settings.runMinimumFatigue()
     if min <= 0 then
+        settings.debugPrint("fatigue threshold: " .. tostring(min) .. ", low")
         return false
     end
     if min >= 100 then
@@ -38,9 +39,11 @@ local function hasLowFatigue()
     local current = math.ceil(100 * fatigueStat.current / fatigueStat.base)
 
     if current < min then
+        --settings.debugPrint("fatigue threshold: " .. tostring(min) .. ", low")
         latched = true
         return true
     else
+        --settings.debugPrint("fatigue threshold: " .. tostring(min) .. ", high")
         latched = false
         return false
     end
