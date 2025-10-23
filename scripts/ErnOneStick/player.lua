@@ -22,6 +22,7 @@ local targetui = require("scripts.ErnOneStick.targetui")
 local keytrack = require("scripts.ErnOneStick.keytrack")
 local targets = require("scripts.ErnOneStick.targets")
 local fatigue = require("scripts.ErnOneStick.fatigue")
+local unitoggle = require("scripts.ErnOneStick.unitoggle")
 local shaderUtils = require("scripts.ErnOneStick.shader_utils")
 local core = require("openmw.core")
 local pself = require("openmw.self")
@@ -38,7 +39,7 @@ local nearby = require('openmw.nearby')
 local cameraInterface = require("openmw.interfaces").Camera
 local uiInterface = require("openmw.interfaces").UI
 
-settings.initSettings()
+--settings.initSettings()
 
 if settings.disable() then
     print(settings.MOD_NAME .. " is disabled.")
@@ -63,13 +64,6 @@ local invertLook = 1
 if settings.invertLookVertical then
     invertLook = -1
 end
-
-input.registerAction {
-    key = settings.MOD_NAME .. "LockButton",
-    type = input.ACTION_TYPE.Boolean,
-    l10n = settings.MOD_NAME,
-    defaultValue = false,
-}
 
 local function clearControls()
     pself.controls.sideMovement = 0
@@ -1155,6 +1149,8 @@ local function onFrame(dt)
 
     -- lastHit must be cleaned up so it is only set once per frame.
     lastHit = nil
+
+    unitoggle.onFrame(dt)
 end
 
 local function onUpdate(dt)

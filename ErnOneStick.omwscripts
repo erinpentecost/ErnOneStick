@@ -1,4 +1,3 @@
 PLAYER:scripts/ErnOneStick/player.lua
-PLAYER:scripts/ErnOneStick/unitoggle.lua
 GLOBAL:scripts/ErnOneStick/global.lua
 NPC, CREATURE:scripts/ErnOneStick/actor.lua

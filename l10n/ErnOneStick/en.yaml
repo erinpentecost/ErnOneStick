@@ -1,7 +1,7 @@
 name: "ErnOneStick"
 description: "Play Morrowind with just one analogue stick (instead of two)."
 
-firstRunMessage: "You must map a Lock-On Button in the ErnOneStick mod settings."
+firstRunMessage: "You must unmap X and Y buttons for ErnOneStick."
 
 modSettingsTitle: "Mod Options"
 modSettingsDesc: "Change how the mod works."
@@ -52,6 +52,10 @@ runWhileLockedOn_description: "Set this to false if you are running out of Fatig
 
 runMinimumFatigue_name: "Run Minimum Fatigue"
 runMinimumFatigue_description: "Disable running when your current Fatigue percent is lower than this value. If you have an analog stick, just keep this at 0."
+0%: "0%"
+25%: "25%"
+50%: "50%"
+75%: "75%"
 
 runWhenReadied_name: "Run While Readied"
 runWhenReadied_description: "Always run when you have your Spell or Weapon ready while in Travel mode. Bypasses 'Run Minimum Fatigue'."

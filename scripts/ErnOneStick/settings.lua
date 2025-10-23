@@ -21,7 +21,10 @@ local interfaces = require("openmw.interfaces")
 local storage = require("openmw.storage")
 local ui = require('openmw.ui')
 local localization = core.l10n(MOD_NAME)
+local input = require('openmw.input')
 
+-- hacky!
+--local bindingSection = storage.playerSection('OMWInputBindings')
 
 local SettingsInput = storage.playerSection("SettingsInput" .. MOD_NAME)
 local SettingsDPAD = storage.playerSection("SettingsDPAD" .. MOD_NAME)
@@ -55,7 +58,7 @@ local function firstRunSetup()
     end
 end
 
-
+local minFatigue = { "0%", "25%", "50%", "75%" }
 local cameraModes = { "first", "third" }
 
 local function initSettings()
@@ -84,7 +87,6 @@ local function initSettings()
             name = "firstRun_name",
             default = true,
             renderer = "checkbox",
-            --disabled = true,
         } }
     }
 
@@ -108,13 +110,9 @@ local function initSettings()
                 key = "runMinimumFatigue",
                 name = "runMinimumFatigue_name",
                 description = "runMinimumFatigue_description",
-                default = 0,
-                renderer = "number",
-                argument = {
-                    integer = true,
-                    min = 0,
-                    max = 100
-                }
+                argument = { items = minFatigue, l10n = MOD_NAME },
+                default = minFatigue[1],
+                renderer = "select",
             },
             {
                 key = "runWhenReadied",
@@ -137,10 +135,7 @@ local function initSettings()
             key = "lockButton",
             name = "lockButton_name",
             description = "lockButton_description",
-            -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
-            --default = "RightStick",
-            default = "",
-            -- this doesn't actually work
+            default = "Controller Y",
             renderer = "inputBinding",
             argument = {
                 key = MOD_NAME .. "LockButton",
@@ -233,10 +228,7 @@ local function initSettings()
             key = "toggleButton",
             name = "toggleButton_name",
             description = "toggleButton_description",
-            -- the toggle POV gamepad button is MWInput::A_TogglePOV - SDL_CONTROLLER_BUTTON_RIGHTSTICK - RightStick
-            --default = "Y",
-            -- this doesn't actually work
-            default = "",
+            default = "Controller X",
             renderer = "inputBinding",
             argument = {
                 key = MOD_NAME .. "ToggleButton",
@@ -259,6 +251,20 @@ local function initSettings()
         firstRunSetup()
         SettingsAdmin:set("firstRun", false)
     end
+
+    input.registerAction {
+        key = MOD_NAME .. "LockButton",
+        type = input.ACTION_TYPE.Boolean,
+        l10n = MOD_NAME,
+        defaultValue = false,
+    }
+
+    input.registerAction {
+        key = MOD_NAME .. "ToggleButton",
+        type = input.ACTION_TYPE.Boolean,
+        l10n = MOD_NAME,
+        defaultValue = false,
+    }
 
     print("lockButton: " .. tostring(SettingsInput:get("lockButton")))
     print("toggleButton: " .. tostring(SettingsInput:get("toggleButton")))
@@ -295,7 +301,19 @@ local settingsContainer = {
 
     SettingsInput = SettingsInput,
     SettingsDPAD = SettingsDPAD,
+
+    runMinimumFatigue = function() return tonumber(SettingsDPAD:get("runMinimumFatigue"):sub(1, -2)) end,
 }
 setmetatable(settingsContainer, lookupFuncTable)
+
+local initialized = false
+if not initialized then
+    print("initializing settings")
+    initSettings()
+    initialized = true
+    print("done initializing settings")
+else
+    print("re-imported")
+end
 
 return settingsContainer
