@@ -30,13 +30,6 @@ if settings.disable() then
     return
 end
 
-input.registerAction {
-    key = settings.MOD_NAME .. "ToggleButton",
-    type = input.ACTION_TYPE.Boolean,
-    l10n = settings.MOD_NAME,
-    defaultValue = false,
-}
-
 local toggleKey = keytrack.NewKey("toggle",
     function(dt) return input.getBooleanActionValue(settings.MOD_NAME .. "ToggleButton") end)
 
@@ -112,7 +105,5 @@ local function onFrame(dt)
 end
 
 return {
-    engineHandlers = {
-        onFrame = onFrame
-    }
+    onFrame = onFrame
 }
