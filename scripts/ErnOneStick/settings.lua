@@ -302,7 +302,7 @@ local settingsContainer = {
     SettingsInput = SettingsInput,
     SettingsDPAD = SettingsDPAD,
 
-    runMinimumFatigue = tonumber(SettingsDPAD:get("runMinimumFatigue"):sub(1, -2)) / 100,
+    runMinimumFatigue = function() return tonumber(SettingsDPAD:get("runMinimumFatigue"):sub(1, -2)) / 100 end,
 }
 setmetatable(settingsContainer, lookupFuncTable)
 

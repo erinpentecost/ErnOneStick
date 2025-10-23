@@ -21,7 +21,7 @@ local pself = require("openmw.self")
 local latched = true
 
 local function hasLowFatigue()
-    local min = settings.runMinimumFatigue
+    local min = settings.runMinimumFatigue()
     if min <= 0 then
         return false
     end
