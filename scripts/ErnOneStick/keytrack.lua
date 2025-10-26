@@ -15,9 +15,6 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-
-local input = require('openmw.input')
-local settings = require("scripts.ErnOneStick.settings")
 local util = require('openmw.util')
 
 local maxThresholdForOff = 0.1
@@ -67,7 +64,7 @@ function KeyFunctions.update(self, dt)
     end
 
     if newBooleanState ~= self.pressed then
-        settings.debugPrint("key " .. self.name .. ": " .. tostring(self.pressed) .. "->" .. tostring(newBooleanState))
+        --settings.debugPrint("key " .. self.name .. ": " .. tostring(self.pressed) .. "->" .. tostring(newBooleanState))
         self.pressed = newBooleanState
         if newBooleanState then
             self.rise = true

@@ -15,15 +15,28 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local pself = require("openmw.self")
-local combat = require('openmw.interfaces').Combat
-
 local MOD_NAME = require("scripts.ErnOneStick.ns")
+local interfaces = require("openmw.interfaces")
 
-combat.addOnHitHandler(function(attackInfo)
-    if attackInfo ~= nil and attackInfo.attacker ~= nil then
-        attackInfo.attacker:sendEvent(MOD_NAME .. 'onStruck', {
-            target = pself,
-        })
+local adminSettings = interfaces.ErnOneStick_S3ProtectedTable.new {
+    inputGroupName = "SettingsAdmin" .. MOD_NAME,
+    logPrefix = MOD_NAME,
+    modName = MOD_NAME,
+    subscribeHandler = false,
+}
+adminSettings.state = { debugMode = false, disable = false }
+local function debugPrint(str, ...)
+    if adminSettings.state.debugMode then
+        local arg = { ... }
+        if arg ~= nil then
+            print(string.format("DEBUG: " .. str, unpack(arg)))
+        else
+            print("DEBUG: " .. str)
+        end
     end
-end)
+end
+
+return {
+    debugPrint = debugPrint,
+    disable = adminSettings.state.disable
+}

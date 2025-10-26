@@ -15,7 +15,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local settings = require("scripts.ErnOneStick.settings")
+local MOD_NAME = require("scripts.ErnOneStick.ns")
 local state = require("scripts.ErnOneStick.state")
 local radians = require("scripts.ErnOneStick.radians")
 local targetui = require("scripts.ErnOneStick.targetui")
@@ -36,27 +36,31 @@ local nearby = require('openmw.nearby')
 local cameraInterface = require("openmw.interfaces").Camera
 local uiInterface = require("openmw.interfaces").UI
 
-if settings.disable() then
-    print(settings.MOD_NAME .. " is disabled.")
+local admin = require("scripts.ErnOneStick.inputSettings.admin")
+local inputSettings = require("scripts.ErnOneStick.inputSettings.input")
+local dpadSettings = require("scripts.ErnOneStick.inputSettings.dpad")
+
+if admin.disable then
+    print(MOD_NAME .. " is disabled.")
     return
 end
 
 local function takeControl(assumeControl)
     if assumeControl then
         controls.overrideMovementControls(true)
-        cameraInterface.disableModeControl(settings.MOD_NAME)
+        cameraInterface.disableModeControl(MOD_NAME)
     else
         controls.overrideMovementControls(false)
-        cameraInterface.enableModeControl(settings.MOD_NAME)
+        cameraInterface.enableModeControl(MOD_NAME)
     end
 end
 
-takeControl(not settings.twoStickMode)
+takeControl(not inputSettings.twoStickMode)
 
 local runThreshold = 0.9
 
 local invertLook = 1
-if settings.invertLookVertical then
+if inputSettings.invertLookVertical then
     invertLook = -1
 end
 
@@ -69,7 +73,7 @@ local function clearControls()
 end
 
 local function getSoundFilePath(file)
-    return "Sound\\" .. settings.MOD_NAME .. "\\" .. file
+    return "Sound\\" .. MOD_NAME .. "\\" .. file
 end
 
 local function resetCamera()
@@ -97,7 +101,7 @@ local function targetAngles(worldVector, t)
 
     -- safety for when we're too close
     if (util.vector2(pself.position.x, pself.position.y) - util.vector2(worldVector.x, worldVector.y)):length2() < 200 then
-        settings.debugPrint("too close")
+        admin.debugPrint("too close")
         return {
             yaw = 0,
             pitch = 0
@@ -168,13 +172,13 @@ local function look(worldVector, t)
     -- Actually rotate the player so they are facing that direction.
     -- This will also change the camera to match.
     local trans = util.transform
-    core.sendGlobalEvent(settings.MOD_NAME .. "onRotate", {
+    core.sendGlobalEvent(MOD_NAME .. "onRotate", {
         object = pself,
         rotation = trans.rotateZ(angles.yaw) * trans.rotateX(angles.pitch)
     })
 
     -- this all matches
-    --[[settings.debugPrint("Yaw/Pitch: target(" ..
+    --[[admin.debugPrint("Yaw/Pitch: target(" ..
         string.format("%.3f", targetYaw) ..
         "/" .. string.format("%.3f", targetPitch) ..
         ") actual(" ..
@@ -222,7 +226,7 @@ local function lockOnPosition(entity)
         pos = pos + entity.rotation:apply(util.vector3(0, 0, (dampedSize.z) * zRatio * 0.7))
     end
 
-    --settings.debugPrint(string.format("%.3f", entity:getBoundingBox().center.z) .. " - " .. string.format("%.3f", pos.z))
+    --admin.debugPrint(string.format("%.3f", entity:getBoundingBox().center.z) .. " - " .. string.format("%.3f", pos.z))
     return pos
 end
 
@@ -239,7 +243,7 @@ local function getReach()
 end
 
 local keyLock = keytrack.NewKey("lock",
-    function(dt) return input.getBooleanActionValue(settings.MOD_NAME .. "LockButton") end)
+    function(dt) return input.getBooleanActionValue(MOD_NAME .. "LockButton") end)
 local keyForward = keytrack.NewKey("forward", function(dt)
     return input.getRangeActionValue("MoveForward")
 end)
@@ -300,7 +304,7 @@ local uiState = state.NewState()
 local noControlState = state.NewState()
 
 local function getTravelState()
-    if settings.twoStickMode then
+    if inputSettings.twoStickMode then
         return twoStickTravelState
     else
         return oneStickTravelState
@@ -328,7 +332,7 @@ uiState:set({
         takeControl(false)
     end,
     onExit = function(base)
-        takeControl(not settings.twoStickMode)
+        takeControl(not inputSettings.twoStickMode)
     end,
     onFrame = function(s, dt)
         if uiInterface.getMode() == nil then
@@ -343,7 +347,7 @@ local function handleControlLoss()
     -- try to not destroy the camera so much
     if (types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Looking) ~= true) or (types.Player.getControlSwitch(pself, types.Player.CONTROL_SWITCH.Controls) ~= true) then
         if stateMachine:current().name ~= noControlState.name then
-            settings.debugPrint("Detected lack of control, stopping one-stick mode.")
+            admin.debugPrint("Detected lack of control, stopping one-stick mode.")
             stateMachine:push(noControlState)
         end
     end
@@ -376,7 +380,7 @@ lockedOnState:set({
     lowFatigue = false,
     onEnter = function(base)
         clearControls()
-        if settings.lockedoncam == "third" then
+        if inputSettings.lockedoncam == "third" then
             base.pitchMod = function(p)
                 -- there's a tendency for this to look near-straight-down when in melee.
                 return math.min(p + 0.2, 0.7)
@@ -395,7 +399,7 @@ lockedOnState:set({
             base.lowFatigue = false
             setThirdPOVSettings()
             camera.setMode(camera.MODE.ThirdPerson, true)
-        elseif settings.lockedoncam == "first" then
+        elseif inputSettings.lockedoncam == "first" then
             camera.setMode(camera.MODE.FirstPerson, true)
             base.pitchMod = nil
             base.yawMod = nil
@@ -412,7 +416,7 @@ lockedOnState:set({
 
         if core.sound.isSoundFilePlaying(getSoundFilePath("wind.mp3"), pself) ~= true then
             core.sound.playSoundFile3d(getSoundFilePath("wind.mp3"), pself, {
-                volume = settings.volume * 0.2,
+                volume = inputSettings.volume * 0.2,
                 loop = true,
             })
         end
@@ -422,7 +426,7 @@ lockedOnState:set({
         resetCamera()
         clearControls()
         core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
-            volume = settings.volume,
+            volume = inputSettings.volume,
         })
         core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
     end,
@@ -433,7 +437,7 @@ lockedOnState:set({
         end
 
         -- Why do I have to set this on every frame?
-        if settings.lockedoncam == "third" then
+        if inputSettings.lockedoncam == "third" then
             setThirdPOVSettings()
         end
 
@@ -462,17 +466,17 @@ lockedOnState:set({
             shouldRun = false
         end
 
-        pself.controls.run = shouldRun and settings.runWhileLockedOn
+        pself.controls.run = shouldRun and dpadSettings.runWhileLockedOn
     end,
     onUpdate = function(s, dt)
         if inWorldSpace(s.base.target) == false then
-            settings.debugPrint("target not valid")
+            inputSettings.debugPrint("target not valid")
             stateMachine:replace(getTravelState())
             return
         end
         s.base.lookPosition = lockOnPosition(s.base.target)
 
-        s.base.lowFatigue = fatigue.hasLowFatigue()
+        s.base.lowFatigue = fatigue.hasLowFatigue(dpadSettings.runMinimumFatigue)
     end
 })
 
@@ -481,7 +485,7 @@ local function hasLOS(playerHead, entity)
 
 
     if inBox(playerHead, box) then
-        settings.debugPrint("collison: " .. entity.recordId .. " contains playerhead")
+        admin.debugPrint("collison: " .. entity.recordId .. " contains playerhead")
         return true
     end
 
@@ -501,7 +505,7 @@ local function hasLOS(playerHead, entity)
             ignore = ignoreList
         })
         if castResult.hit == false then
-            settings.debugPrint("collison: " .. entity.recordId .. " shot out into space")
+            admin.debugPrint("collison: " .. entity.recordId .. " shot out into space")
             return false
         end
         if (castResult.hitObject ~= nil) and (castResult.hitObject.id == pself.id) then
@@ -509,7 +513,7 @@ local function hasLOS(playerHead, entity)
         end
         -- if the thing we hit is intersecting with us, then skip it and try again.
         if (castResult.hitPos ~= nil) and inBox(castResult.hitPos, box) then
-            settings.debugPrint("inBox(" .. tostring(castResult.hitPos) .. "," .. tostring(entity.recordId) .. ")")
+            admin.debugPrint("inBox(" .. tostring(castResult.hitPos) .. "," .. tostring(entity.recordId) .. ")")
             -- ignore the thing we hit (if it's an object)
             if castResult.hitObject ~= nil then
                 table.insert(ignoreList, castResult.hitObject)
@@ -518,15 +522,15 @@ local function hasLOS(playerHead, entity)
             startPosition = castResult.hitPos
         else
             if castResult.hitObject ~= nil then
-                settings.debugPrint("collison: " .. entity.recordId .. " stopped by " .. castResult.hitObject.recordId)
+                admin.debugPrint("collison: " .. entity.recordId .. " stopped by " .. castResult.hitObject.recordId)
             else
-                settings.debugPrint("collison: " .. entity.recordId .. " stopped by something")
+                admin.debugPrint("collison: " .. entity.recordId .. " stopped by something")
             end
 
             return false
         end
     end
-    settings.debugPrint("collison: " .. entity.recordId .. " gave up")
+    admin.debugPrint("collison: " .. entity.recordId .. " gave up")
     return false
 end
 
@@ -546,11 +550,11 @@ lockSelectionState:set({
     actors = {},
     others = {},
     onEnter = function(base)
-        settings.debugPrint("enter state: lockselection")
+        admin.debugPrint("enter state: lockselection")
         clearControls()
         takeControl(true)
         resetCamera()
-        core.sendGlobalEvent(settings.MOD_NAME .. "onPause")
+        core.sendGlobalEvent(inputSettings.MOD_NAME .. "onPause")
         uiInterface.setHudVisibility(false)
         controls.overrideUiControls(true)
         camera.setMode(camera.MODE.FirstPerson, true)
@@ -560,7 +564,7 @@ lockSelectionState:set({
 
         base.actors = targets.TargetCollection:new(nearby.actors,
             function(e)
-                --settings.debugPrint("Filtering actor " .. e.recordId .. " (" .. e.id .. ")....")
+                --admin.debugPrint("Filtering actor " .. e.recordId .. " (" .. e.id .. ")....")
                 if e:isValid() == false then
                     return false
                 end
@@ -619,7 +623,7 @@ lockSelectionState:set({
 
         base.others = targets.TargetCollection:new(others,
             function(e)
-                --settings.debugPrint("Filtering non-actor " .. e.recordId .. " (" .. e.id .. ")....")
+                --admin.debugPrint("Filtering non-actor " .. e.recordId .. " (" .. e.id .. ")....")
                 if e:isValid() == false then
                     return false
                 end
@@ -645,7 +649,7 @@ lockSelectionState:set({
                     local inventory = types.Container.inventory(e)
                     if inventory:isResolved() and containerRecord.isOrganic then
                         if #inventory:getAll() == 0 then
-                            settings.debugPrint("Filtering picked plant " .. tostring(containerRecord.name))
+                            admin.debugPrint("Filtering picked plant " .. tostring(containerRecord.name))
                             return false
                         end
                     end
@@ -660,25 +664,25 @@ lockSelectionState:set({
             base.selectingActors = false
         end
         if base.currentTarget == nil then
-            settings.debugPrint("no valid targets!")
+            admin.debugPrint("no valid targets!")
             -- we will exit this state on next frame.
         else
-            settings.debugPrint("Started looking at " ..
+            admin.debugPrint("Started looking at " ..
                 base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
             hexDofShader.enabled = true
             core.sound.playSoundFile3d(getSoundFilePath("wind.mp3"), pself, {
-                volume = settings.volume * 0.2,
+                volume = inputSettings.volume * 0.2,
                 loop = true,
             })
             targetui.showTargetUI(base.currentTarget)
         end
 
         core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
-            volume = settings.volume,
+            volume = inputSettings.volume,
         })
     end,
     onExit = function(base)
-        core.sendGlobalEvent(settings.MOD_NAME .. "onUnpause")
+        core.sendGlobalEvent(inputSettings.MOD_NAME .. "onUnpause")
         uiInterface.setHudVisibility(true)
         controls.overrideUiControls(false)
         pself.controls.yawChange = 0
@@ -707,12 +711,12 @@ lockSelectionState:set({
         local newTarget = function(new)
             if (new ~= nil) and (new ~= s.base.currentTarget) then
                 s.base.currentTarget = new
-                settings.debugPrint("Looking at " ..
+                admin.debugPrint("Looking at " ..
                     s.base.currentTarget.recordId .. " (" .. s.base.currentTarget.id .. ").")
 
                 targetui.showTargetUI(s.base.currentTarget)
                 core.sound.playSoundFile3d(getSoundFilePath("ping.mp3"), pself, {
-                    volume = settings.volume,
+                    volume = inputSettings.volume,
                 })
             end
         end
@@ -732,7 +736,7 @@ lockSelectionState:set({
             s.base.selectingActors = false
             newTarget(s.base.others:next())
         elseif inWorldSpace(s.base.currentTarget) == false then
-            --settings.debugPrint("Current target (" ..
+            --admin.debugPrint("Current target (" ..
             --    aux_util.deepToString(s.base.currentTarget, 2) .. ") is no longer valid. Finding a new one...")
             -- we didn't change our target, but our current target is no longer valid.
             -- try jumping to the next one.
@@ -756,7 +760,7 @@ lockSelectionState:set({
         if inWorldSpace(s.base.currentTarget) == false then
             -- we have no valid targets at all.
             core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
-                volume = settings.volume,
+                volume = inputSettings.volume,
             })
             core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
             print("No valid target....")
@@ -775,15 +779,15 @@ lockSelectionState:set({
             core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
 
             if isActor(s.base.currentTarget) and (getDistance(camera.getPosition(), s.base.currentTarget) > core.getGMST("iMaxActivateDist")) then
-                settings.debugPrint("Actor target is too far away to activate.")
+                admin.debugPrint("Actor target is too far away to activate.")
                 core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
-                    volume = settings.volume,
+                    volume = inputSettings.volume,
                 })
             else
                 -- activation doesn't work while paused!
                 -- so we need to drop out of this state and into a non-paused state.
                 core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
-                core.sendGlobalEvent(settings.MOD_NAME .. "onActivate", {
+                core.sendGlobalEvent(inputSettings.MOD_NAME .. "onActivate", {
                     entity = s.base.currentTarget,
                     player = pself,
                 })
@@ -804,15 +808,15 @@ local objectsAffectingPitch = {
 
 local function objectAffectsDynamicPitch(entity)
     if entity == nil then
-        --settings.debugPrint("pitch: hit nil")
+        --admin.debugPrint("pitch: hit nil")
         return true
     end
     if entity.type ~= types.Static then
-        --settings.debugPrint("pitch: hit non-static " .. entity.recordId)
+        --admin.debugPrint("pitch: hit non-static " .. entity.recordId)
         return false
     end
     if objectsAffectingPitch[entity.recordId] then
-        --settings.debugPrint("pitch: hit force-listed " .. entity.recordId)
+        --admin.debugPrint("pitch: hit force-listed " .. entity.recordId)
         return true
     end
     -- only pitch for high-volume objects (like stairs and buildings)
@@ -820,7 +824,7 @@ local function objectAffectsDynamicPitch(entity)
     local volume = boxLengths.x * boxLengths.y * boxLengths.z
 
     local affects = volume > 1500000
-    --settings.debugPrint("pitch: hit static item " .. entity.recordId .. " - " ..
+    --admin.debugPrint("pitch: hit static item " .. entity.recordId .. " - " ..
     --        tostring(affects))
     return affects
 end
@@ -853,11 +857,11 @@ oneStickTravelState:set({
     alwaysRun = false,
     pitchMod = nil,
     onEnter = function(base)
-        if settings.travelcam == "third" then
+        if inputSettings.travelcam == "third" then
             camera.setMode(camera.MODE.ThirdPerson, true)
             setThirdPOVSettings()
             base.pitchMod = function(p) return p + 0.3 end
-        elseif settings.travelcam == "first" then
+        elseif inputSettings.travelcam == "first" then
             camera.setMode(camera.MODE.FirstPerson, true)
             base.pitchMod = nil
         else
@@ -879,15 +883,15 @@ oneStickTravelState:set({
             return
         end
 
-        if settings.autoLockon and lastHit ~= nil then
+        if inputSettings.autoLockon and lastHit ~= nil then
             core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
-                volume = settings.volume,
+                volume = inputSettings.volume,
             })
             startLockon(lastHit)
         end
 
         -- Why do I have to set this on every frame?
-        if settings.travelcam == "third" then
+        if inputSettings.travelcam == "third" then
             setThirdPOVSettings()
         end
 
@@ -913,9 +917,9 @@ oneStickTravelState:set({
             pself.controls.run = false
         end
         if keyLeft.pressed then
-            pself.controls.yawChange = keyLeft.analog * settings.lookSensitivityHorizontal * (-1 * dt)
+            pself.controls.yawChange = keyLeft.analog * inputSettings.lookSensitivityHorizontal * (-1 * dt)
         elseif keyRight.pressed then
-            pself.controls.yawChange = keyRight.analog * settings.lookSensitivityHorizontal * dt
+            pself.controls.yawChange = keyRight.analog * inputSettings.lookSensitivityHorizontal * dt
         else
             pself.controls.yawChange = 0
         end
@@ -926,10 +930,10 @@ oneStickTravelState:set({
             return
         end
 
-        s.base.lowFatigue = fatigue.hasLowFatigue()
-        s.base.alwaysRun = settings.runWhenReadied and (types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing)
+        s.base.lowFatigue = fatigue.hasLowFatigue(dpadSettings.runMinimumFatigue)
+        s.base.alwaysRun = dpadSettings.runWhenReadied and (types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing)
 
-        if settings.dynamicPitch == false then
+        if inputSettings.dynamicPitch == false then
             s.base.desiredPitch = 0
             return
         end
@@ -973,7 +977,7 @@ oneStickTravelState:set({
 
 
         if castResult.hit and objectAffectsDynamicPitch(castResult.hitObject) then
-            --settings.debugPrint("pzed: " ..
+            --admin.debugPrint("pzed: " ..
             --                string.format("%.3f", pself.position.z) .. ", hitzed: " .. string.format("%.3f", castResult.hitPos.z))
 
             -- we hit the ground.
@@ -1010,16 +1014,16 @@ oneStickTravelState:set({
             -- swingToMax is the linear progress of zero pitch to max pitch
             local swingToMax = math.abs(targetPitch) / maxPitchCorrection
             -- when stuck on ground, heightoffset is only 72.
-            --[[settings.debugPrint("swing:" ..
+            --[[admin.debugPrint("swing:" ..
                 string.format("%.3f", swingToMax) ..
                 " raw:" ..
                 string.format("%.3f", rawTarget) ..
                 " heightoffset:" .. string.format("%.3f", camera.getFirstPersonOffset().z + (2 * zHalfHeight)))
                 ]]
             -- this is 0
-            --settings.debugPrint("camera.getFirstPersonOffset().z: " ..
+            --admin.debugPrint("camera.getFirstPersonOffset().z: " ..
             -- string.format("%.3f", camera.getFirstPersonOffset().z))
-            --settings.debugPrint("campos-pselfpos: " .. tostring(camera.getPosition() - pself.position))
+            --admin.debugPrint("campos-pselfpos: " .. tostring(camera.getPosition() - pself.position))
 
             s.base.desiredPitch = easeInOutSine(swingToMax) * maxPitchCorrection * upDown
         else
@@ -1027,7 +1031,7 @@ oneStickTravelState:set({
             s.base.desiredPitch = 0
         end
 
-        --[[settings.debugPrint("pself:" ..
+        --[[admin.debugPrint("pself:" ..
             string.format("%.3f", pself.rotation:getPitch()) ..
             " camera:" ..
             string.format("%.3f", camera.getPitch()) .. " desired:" ..
@@ -1044,14 +1048,14 @@ preliminaryFreeLookState:set({
     onEnter = function(base)
         base.initialMode = camera.getMode()
         base.initialFOV = camera.getFieldOfView()
-        camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
+        camera.setFieldOfView(base.initialFOV / inputSettings.freeLookZoom)
         camera.setMode(camera.MODE.FirstPerson, true)
         base.timeInState = 0
         clearControls()
-        --settings.debugPrint(base.name .. ".OnEnter() = " .. aux_util.deepToString(base, 3))
+        --admin.debugPrint(base.name .. ".OnEnter() = " .. aux_util.deepToString(base, 3))
     end,
     onFrame = function(s, dt)
-        --settings.debugPrint(s.name .. ".OnFrame() = " .. aux_util.deepToString(s.base, 3))
+        --admin.debugPrint(s.name .. ".OnFrame() = " .. aux_util.deepToString(s.base, 3))
         if types.Actor.canMove(pself) == false then
             stateMachine:replace(getTravelState())
         end
@@ -1070,7 +1074,7 @@ preliminaryFreeLookState:set({
         -- if we're spending too long in this state, just go to freelook.
         s.base.timeInState = s.base.timeInState + dt
         if s.base.timeInState > 0.2 then
-            settings.debugPrint("held lock for too long (" .. tostring(s.base.timeInState) .. "s), entering freelook")
+            admin.debugPrint("held lock for too long (" .. tostring(s.base.timeInState) .. "s), entering freelook")
             stateMachine:replace(freeLookState)
         end
     end,
@@ -1095,7 +1099,7 @@ freeLookState:set({
 
         resetCamera()
 
-        camera.setFieldOfView(base.initialFOV / settings.freeLookZoom)
+        camera.setFieldOfView(base.initialFOV / inputSettings.freeLookZoom)
         camera.setMode(camera.MODE.FirstPerson, true)
     end,
     onExit = function(base)
@@ -1110,24 +1114,25 @@ freeLookState:set({
             return
         end
 
-        if settings.autoLockon and lastHit ~= nil then
+        if inputSettings.autoLockon and lastHit ~= nil then
             core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
-                volume = settings.volume,
+                volume = inputSettings.volume,
             })
             startLockon(lastHit)
         end
 
         if keyForward.pressed then
-            pself.controls.pitchChange = keyForward.analog * settings.lookSensitivityVertical * (-1 * dt) * invertLook
+            pself.controls.pitchChange = keyForward.analog * inputSettings.lookSensitivityVertical * (-1 * dt) *
+            invertLook
         elseif keyBackward.pressed then
-            pself.controls.pitchChange = keyBackward.analog * settings.lookSensitivityVertical * dt * invertLook
+            pself.controls.pitchChange = keyBackward.analog * inputSettings.lookSensitivityVertical * dt * invertLook
         else
             pself.controls.pitchChange = 0
         end
         if keyLeft.pressed then
-            pself.controls.yawChange = keyLeft.analog * settings.lookSensitivityHorizontal * (-1 * dt)
+            pself.controls.yawChange = keyLeft.analog * inputSettings.lookSensitivityHorizontal * (-1 * dt)
         elseif keyRight.pressed then
-            pself.controls.yawChange = keyRight.analog * settings.lookSensitivityHorizontal * dt
+            pself.controls.yawChange = keyRight.analog * inputSettings.lookSensitivityHorizontal * dt
         else
             pself.controls.yawChange = 0
         end
@@ -1162,7 +1167,9 @@ end
 
 local function onUpdate(dt)
     if dt == 0 then return end
-    shaderUtils.HandleShaders(dt)
+    if inputSettings.enableShaders then
+        shaderUtils.HandleShaders(dt)
+    end
 
     local currentState = stateMachine:current()
     currentState.onUpdate(currentState, dt)
@@ -1179,14 +1186,14 @@ local function onSettingsChange(data)
     stateMachine:replace(stateMachine:current())
 end
 
-settings.SettingsInput:subscribe(async:callback(onSettingsChange))
-settings.SettingsDPAD:subscribe(async:callback(onSettingsChange))
+inputSettings.SettingsInput:subscribe(async:callback(onSettingsChange))
+inputSettings.SettingsDPAD:subscribe(async:callback(onSettingsChange))
 
 
 return {
     eventHandlers = {
         UiModeChanged = UiModeChanged,
-        [settings.MOD_NAME .. 'onStruck'] = onStruck,
+        [inputSettings.MOD_NAME .. 'onStruck'] = onStruck,
     },
     engineHandlers = {
         onFrame = onFrame,

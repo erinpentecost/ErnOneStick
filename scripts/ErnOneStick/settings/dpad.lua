@@ -15,15 +15,30 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local pself = require("openmw.self")
-local combat = require('openmw.interfaces').Combat
-
 local MOD_NAME = require("scripts.ErnOneStick.ns")
+local interfaces = require("openmw.interfaces")
 
-combat.addOnHitHandler(function(attackInfo)
-    if attackInfo ~= nil and attackInfo.attacker ~= nil then
-        attackInfo.attacker:sendEvent(MOD_NAME .. 'onStruck', {
-            target = pself,
-        })
-    end
-end)
+local DpadSettings = interfaces.ErnOneStick_S3ProtectedTable.new {
+    inputGroupName = "SettingsDPAD" .. MOD_NAME,
+    logPrefix = MOD_NAME,
+    modName = MOD_NAME,
+    subscribeHandler = false,
+}
+DpadSettings.state = {
+    runWhileLockedOn = false,
+    runMinimumFatigue = "",
+    runWhenReadied = false,
+}
+
+local lookupFuncTable = {
+    __index = function(table, key)
+        if key == "runMinimumFatigue" then
+            return tonumber(DpadSettings.state.runMinimumFatigue:sub(1, -2))
+        end
+        return DpadSettings.state[key]
+    end,
+}
+local lookup = {}
+setmetatable(lookup, lookupFuncTable)
+
+return lookup

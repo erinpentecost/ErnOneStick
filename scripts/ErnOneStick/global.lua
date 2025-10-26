@@ -22,7 +22,7 @@ if require("openmw.core").API_REVISION < 62 then
     error("OpenMW 0.49 or newer is required!")
 end
 
-local MOD_NAME = "ErnOneStick"
+local MOD_NAME = require("scripts.ErnOneStick.ns")
 
 local function onPause()
     world.pause(MOD_NAME)
