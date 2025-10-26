@@ -15,7 +15,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local settings = require("scripts.ErnOneStick.settings")
+local MOD_NAME = require("scripts.ErnOneStick.ns")
 local pself = require("openmw.self")
 local async = require("openmw.async")
 local types = require('openmw.types')
@@ -25,13 +25,8 @@ local core = require("openmw.core")
 local input = require('openmw.input')
 local controls = require('openmw.interfaces').Controls
 
-if settings.disable() then
-    print(settings.MOD_NAME .. " is disabled.")
-    return
-end
-
 local toggleKey = keytrack.NewKey("toggle",
-    function(dt) return input.getBooleanActionValue(settings.MOD_NAME .. "ToggleButton") end)
+    function(dt) return input.getBooleanActionValue(MOD_NAME .. "ToggleButton") end)
 
 local function canDoMagic()
     local hasSpell = (types.Actor.getSelectedEnchantedItem(pself) ~= nil) or (types.Actor.getSelectedSpell(pself) ~= nil)
@@ -89,14 +84,14 @@ local function onFrame(dt)
         pressedDuration = pressedDuration + dt
     end
     if longPressHandled == false and pressedDuration > 0.2 then
-        settings.debugPrint("toggle sneak")
+        --settings.debugPrint("toggle sneak")
         pself.controls.sneak = not pself.controls.sneak
         longPressHandled = true
     end
 
     if toggleKey.fall then
         if longPressHandled == false then
-            settings.debugPrint("toggle stance")
+            --settings.debugPrint("toggle stance")
             toggle()
         end
         pressedDuration = 0

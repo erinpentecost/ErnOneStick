@@ -18,25 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local MOD_NAME = require("scripts.ErnOneStick.ns")
 local interfaces = require("openmw.interfaces")
 
-local inputSettings = interfaces.ErnOneStick_S3ProtectedTable.new {
-    inputGroupName = "SettingsInput" .. MOD_NAME,
-    logPrefix = MOD_NAME,
-    modName = MOD_NAME,
-    subscribeHandler = false,
-}
-inputSettings.state = {
-    twoStickMode = false,
-    lookSensitivityHorizontal = 0,
-    lookSensitivityVertical = 0,
-    invertLookVertical = false,
-    enableShaders = false,
-    freeLookZoom = 0,
-    volume = 0,
-    dynamicPitch = false,
-    autoLockon = true,
-    travelcam = "",
-    lockedoncam = "",
+local Group = interfaces[MOD_NAME .. "Group"].Group
 
-}
+local inputSettings = Group("SettingsGlobal" .. MOD_NAME .. "Input")
 
-return inputSettings.state
+return {
+    val = inputSettings
+}

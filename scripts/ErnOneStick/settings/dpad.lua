@@ -18,27 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local MOD_NAME = require("scripts.ErnOneStick.ns")
 local interfaces = require("openmw.interfaces")
 
-local DpadSettings = interfaces.ErnOneStick_S3ProtectedTable.new {
-    inputGroupName = "SettingsDPAD" .. MOD_NAME,
-    logPrefix = MOD_NAME,
-    modName = MOD_NAME,
-    subscribeHandler = false,
-}
-DpadSettings.state = {
-    runWhileLockedOn = false,
-    runMinimumFatigue = "",
-    runWhenReadied = false,
-}
+local Group = interfaces[MOD_NAME .. "Group"].Group
 
-local lookupFuncTable = {
-    __index = function(table, key)
-        if key == "runMinimumFatigue" then
-            return tonumber(DpadSettings.state.runMinimumFatigue:sub(1, -2))
-        end
-        return DpadSettings.state[key]
-    end,
-}
-local lookup = {}
-setmetatable(lookup, lookupFuncTable)
+local DpadSettings = Group("SettingsGlobal" .. MOD_NAME .. "DPAD")
 
-return lookup
+return {
+    runMinimumFatigue = function() return tonumber(DpadSettings.runMinimumFatigue:sub(1, -2)) end,
+    val = DpadSettings
+}

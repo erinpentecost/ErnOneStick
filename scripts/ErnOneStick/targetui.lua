@@ -16,7 +16,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
 
-local settings = require("scripts.ErnOneStick.settings")
 local pself = require("openmw.self")
 local ui = require('openmw.ui')
 local util = require('openmw.util')
@@ -38,12 +37,12 @@ local function atLeastRank(npc, factionID, rank)
         end
     end
     if inFaction == false then
-        settings.debugPrint("your rank in " .. factionID .. " is <not a member>")
+        --settings.debugPrint("your rank in " .. factionID .. " is <not a member>")
         return false
     end
 
     local selfRank = types.NPC.getFactionRank(npc, factionID)
-    settings.debugPrint("your rank in " .. factionID .. " is " .. tostring(selfRank))
+    --settings.debugPrint("your rank in " .. factionID .. " is " .. tostring(selfRank))
     if selfRank == nil then
         return false
     elseif (rank == nil) then

@@ -18,15 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local MOD_NAME = require("scripts.ErnOneStick.ns")
 local interfaces = require("openmw.interfaces")
 
-local adminSettings = interfaces.ErnOneStick_S3ProtectedTable.new {
-    inputGroupName = "SettingsAdmin" .. MOD_NAME,
-    logPrefix = MOD_NAME,
-    modName = MOD_NAME,
-    subscribeHandler = false,
-}
-adminSettings.state = { debugMode = false, disable = false }
+local Group = interfaces[MOD_NAME .. "Group"].Group
+
+local adminSettings = Group("SettingsGlobal" .. MOD_NAME .. "Admin")
+
 local function debugPrint(str, ...)
-    if adminSettings.state.debugMode then
+    if adminSettings.debugMode then
         local arg = { ... }
         if arg ~= nil then
             print(string.format("DEBUG: " .. str, unpack(arg)))
@@ -35,8 +32,7 @@ local function debugPrint(str, ...)
         end
     end
 end
-
 return {
     debugPrint = debugPrint,
-    disable = adminSettings.state.disable
+    val = adminSettings
 }

@@ -39,3 +39,6 @@ input.registerAction {
     l10n = MOD_NAME,
     defaultValue = false,
 }
+
+
+--require("scripts.ErnOneStick.settings.options")

@@ -21,8 +21,12 @@ local interfaces = require("openmw.interfaces")
 local minFatigue = { "0%", "25%", "50%", "75%" }
 local cameraModes = { "first", "third" }
 
+local function groupKey(groupName)
+    return 'SettingsGlobal' .. MOD_NAME .. groupName
+end
+
 interfaces.Settings.registerGroup {
-    key = "SettingsAdmin" .. MOD_NAME,
+    key = groupKey("Admin"),
     l10n = MOD_NAME,
     name = "modSettingsAdminTitle",
     description = "modSettingsAdminDesc",
@@ -50,7 +54,7 @@ interfaces.Settings.registerGroup {
 }
 
 interfaces.Settings.registerGroup {
-    key = "SettingsDPAD" .. MOD_NAME,
+    key = groupKey("DPAD"),
     l10n = MOD_NAME,
     name = "modSettingsDPADTitle",
     description = "modSettingsDPADDesc",
@@ -84,7 +88,7 @@ interfaces.Settings.registerGroup {
 }
 
 interfaces.Settings.registerGroup {
-    key = "SettingsInput" .. MOD_NAME,
+    key = groupKey("Input"),
     l10n = MOD_NAME,
     name = "modSettingsInputTitle",
     description = "modSettingsInputDesc",

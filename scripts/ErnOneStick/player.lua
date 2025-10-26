@@ -36,11 +36,11 @@ local nearby = require('openmw.nearby')
 local cameraInterface = require("openmw.interfaces").Camera
 local uiInterface = require("openmw.interfaces").UI
 
-local admin = require("scripts.ErnOneStick.inputSettings.admin")
-local inputSettings = require("scripts.ErnOneStick.inputSettings.input")
-local dpadSettings = require("scripts.ErnOneStick.inputSettings.dpad")
+local admin = require("scripts.ErnOneStick.settings.admin")
+local inputSettings = require("scripts.ErnOneStick.settings.input")
+local dpadSettings = require("scripts.ErnOneStick.settings.dpad")
 
-if admin.disable then
+if admin.val.disable then
     print(MOD_NAME .. " is disabled.")
     return
 end
@@ -55,12 +55,12 @@ local function takeControl(assumeControl)
     end
 end
 
-takeControl(not inputSettings.twoStickMode)
+takeControl(not inputSettings.val.twoStickMode)
 
 local runThreshold = 0.9
 
 local invertLook = 1
-if inputSettings.invertLookVertical then
+if inputSettings.val.invertLookVertical then
     invertLook = -1
 end
 
@@ -304,7 +304,7 @@ local uiState = state.NewState()
 local noControlState = state.NewState()
 
 local function getTravelState()
-    if inputSettings.twoStickMode then
+    if inputSettings.val.twoStickMode then
         return twoStickTravelState
     else
         return oneStickTravelState
@@ -332,7 +332,7 @@ uiState:set({
         takeControl(false)
     end,
     onExit = function(base)
-        takeControl(not inputSettings.twoStickMode)
+        takeControl(not inputSettings.val.twoStickMode)
     end,
     onFrame = function(s, dt)
         if uiInterface.getMode() == nil then
@@ -380,7 +380,7 @@ lockedOnState:set({
     lowFatigue = false,
     onEnter = function(base)
         clearControls()
-        if inputSettings.lockedoncam == "third" then
+        if inputSettings.val.lockedoncam == "third" then
             base.pitchMod = function(p)
                 -- there's a tendency for this to look near-straight-down when in melee.
                 return math.min(p + 0.2, 0.7)
@@ -399,7 +399,7 @@ lockedOnState:set({
             base.lowFatigue = false
             setThirdPOVSettings()
             camera.setMode(camera.MODE.ThirdPerson, true)
-        elseif inputSettings.lockedoncam == "first" then
+        elseif inputSettings.val.lockedoncam == "first" then
             camera.setMode(camera.MODE.FirstPerson, true)
             base.pitchMod = nil
             base.yawMod = nil
@@ -416,7 +416,7 @@ lockedOnState:set({
 
         if core.sound.isSoundFilePlaying(getSoundFilePath("wind.mp3"), pself) ~= true then
             core.sound.playSoundFile3d(getSoundFilePath("wind.mp3"), pself, {
-                volume = inputSettings.volume * 0.2,
+                volume = inputSettings.val.volume * 0.2,
                 loop = true,
             })
         end
@@ -426,7 +426,7 @@ lockedOnState:set({
         resetCamera()
         clearControls()
         core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
-            volume = inputSettings.volume,
+            volume = inputSettings.val.volume,
         })
         core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
     end,
@@ -437,7 +437,7 @@ lockedOnState:set({
         end
 
         -- Why do I have to set this on every frame?
-        if inputSettings.lockedoncam == "third" then
+        if inputSettings.val.lockedoncam == "third" then
             setThirdPOVSettings()
         end
 
@@ -466,17 +466,17 @@ lockedOnState:set({
             shouldRun = false
         end
 
-        pself.controls.run = shouldRun and dpadSettings.runWhileLockedOn
+        pself.controls.run = shouldRun and dpadSettings.val.runWhileLockedOn
     end,
     onUpdate = function(s, dt)
         if inWorldSpace(s.base.target) == false then
-            inputSettings.debugPrint("target not valid")
+            inputSettings.val.debugPrint("target not valid")
             stateMachine:replace(getTravelState())
             return
         end
         s.base.lookPosition = lockOnPosition(s.base.target)
 
-        s.base.lowFatigue = fatigue.hasLowFatigue(dpadSettings.runMinimumFatigue)
+        s.base.lowFatigue = fatigue.hasLowFatigue(dpadSettings.runMinimumFatigue())
     end
 })
 
@@ -554,7 +554,7 @@ lockSelectionState:set({
         clearControls()
         takeControl(true)
         resetCamera()
-        core.sendGlobalEvent(inputSettings.MOD_NAME .. "onPause")
+        core.sendGlobalEvent(MOD_NAME .. "onPause")
         uiInterface.setHudVisibility(false)
         controls.overrideUiControls(true)
         camera.setMode(camera.MODE.FirstPerson, true)
@@ -671,18 +671,18 @@ lockSelectionState:set({
                 base.currentTarget.recordId .. " (" .. base.currentTarget.id .. ").")
             hexDofShader.enabled = true
             core.sound.playSoundFile3d(getSoundFilePath("wind.mp3"), pself, {
-                volume = inputSettings.volume * 0.2,
+                volume = inputSettings.val.volume * 0.2,
                 loop = true,
             })
             targetui.showTargetUI(base.currentTarget)
         end
 
         core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
-            volume = inputSettings.volume,
+            volume = inputSettings.val.volume,
         })
     end,
     onExit = function(base)
-        core.sendGlobalEvent(inputSettings.MOD_NAME .. "onUnpause")
+        core.sendGlobalEvent(MOD_NAME .. "onUnpause")
         uiInterface.setHudVisibility(true)
         controls.overrideUiControls(false)
         pself.controls.yawChange = 0
@@ -716,7 +716,7 @@ lockSelectionState:set({
 
                 targetui.showTargetUI(s.base.currentTarget)
                 core.sound.playSoundFile3d(getSoundFilePath("ping.mp3"), pself, {
-                    volume = inputSettings.volume,
+                    volume = inputSettings.val.volume,
                 })
             end
         end
@@ -760,7 +760,7 @@ lockSelectionState:set({
         if inWorldSpace(s.base.currentTarget) == false then
             -- we have no valid targets at all.
             core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
-                volume = inputSettings.volume,
+                volume = inputSettings.val.volume,
             })
             core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
             print("No valid target....")
@@ -781,13 +781,13 @@ lockSelectionState:set({
             if isActor(s.base.currentTarget) and (getDistance(camera.getPosition(), s.base.currentTarget) > core.getGMST("iMaxActivateDist")) then
                 admin.debugPrint("Actor target is too far away to activate.")
                 core.sound.playSoundFile3d(getSoundFilePath("cancel.mp3"), pself, {
-                    volume = inputSettings.volume,
+                    volume = inputSettings.val.volume,
                 })
             else
                 -- activation doesn't work while paused!
                 -- so we need to drop out of this state and into a non-paused state.
                 core.sound.stopSoundFile3d(getSoundFilePath("wind.mp3"), pself)
-                core.sendGlobalEvent(inputSettings.MOD_NAME .. "onActivate", {
+                core.sendGlobalEvent(MOD_NAME .. "onActivate", {
                     entity = s.base.currentTarget,
                     player = pself,
                 })
@@ -857,15 +857,15 @@ oneStickTravelState:set({
     alwaysRun = false,
     pitchMod = nil,
     onEnter = function(base)
-        if inputSettings.travelcam == "third" then
+        if inputSettings.val.travelcam == "third" then
             camera.setMode(camera.MODE.ThirdPerson, true)
             setThirdPOVSettings()
             base.pitchMod = function(p) return p + 0.3 end
-        elseif inputSettings.travelcam == "first" then
+        elseif inputSettings.val.travelcam == "first" then
             camera.setMode(camera.MODE.FirstPerson, true)
             base.pitchMod = nil
         else
-            error("unknown setting value for travelcam")
+            error("unknown setting value for travelcam: " .. tostring(inputSettings.val.travelcam))
         end
         clearControls()
         base.onGround = types.Actor.isOnGround(pself)
@@ -883,15 +883,15 @@ oneStickTravelState:set({
             return
         end
 
-        if inputSettings.autoLockon and lastHit ~= nil then
+        if inputSettings.val.autoLockon and lastHit ~= nil then
             core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
-                volume = inputSettings.volume,
+                volume = inputSettings.val.volume,
             })
             startLockon(lastHit)
         end
 
         -- Why do I have to set this on every frame?
-        if inputSettings.travelcam == "third" then
+        if inputSettings.val.travelcam == "third" then
             setThirdPOVSettings()
         end
 
@@ -917,9 +917,9 @@ oneStickTravelState:set({
             pself.controls.run = false
         end
         if keyLeft.pressed then
-            pself.controls.yawChange = keyLeft.analog * inputSettings.lookSensitivityHorizontal * (-1 * dt)
+            pself.controls.yawChange = keyLeft.analog * inputSettings.val.lookSensitivityHorizontal * (-1 * dt)
         elseif keyRight.pressed then
-            pself.controls.yawChange = keyRight.analog * inputSettings.lookSensitivityHorizontal * dt
+            pself.controls.yawChange = keyRight.analog * inputSettings.val.lookSensitivityHorizontal * dt
         else
             pself.controls.yawChange = 0
         end
@@ -930,10 +930,11 @@ oneStickTravelState:set({
             return
         end
 
-        s.base.lowFatigue = fatigue.hasLowFatigue(dpadSettings.runMinimumFatigue)
-        s.base.alwaysRun = dpadSettings.runWhenReadied and (types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing)
+        s.base.lowFatigue = fatigue.hasLowFatigue(dpadSettings.runMinimumFatigue())
+        s.base.alwaysRun = dpadSettings.val.runWhenReadied and
+            (types.Actor.getStance(pself) ~= types.Actor.STANCE.Nothing)
 
-        if inputSettings.dynamicPitch == false then
+        if inputSettings.val.dynamicPitch == false then
             s.base.desiredPitch = 0
             return
         end
@@ -1048,7 +1049,7 @@ preliminaryFreeLookState:set({
     onEnter = function(base)
         base.initialMode = camera.getMode()
         base.initialFOV = camera.getFieldOfView()
-        camera.setFieldOfView(base.initialFOV / inputSettings.freeLookZoom)
+        camera.setFieldOfView(base.initialFOV / inputSettings.val.freeLookZoom)
         camera.setMode(camera.MODE.FirstPerson, true)
         base.timeInState = 0
         clearControls()
@@ -1099,7 +1100,7 @@ freeLookState:set({
 
         resetCamera()
 
-        camera.setFieldOfView(base.initialFOV / inputSettings.freeLookZoom)
+        camera.setFieldOfView(base.initialFOV / inputSettings.val.freeLookZoom)
         camera.setMode(camera.MODE.FirstPerson, true)
     end,
     onExit = function(base)
@@ -1114,25 +1115,25 @@ freeLookState:set({
             return
         end
 
-        if inputSettings.autoLockon and lastHit ~= nil then
+        if inputSettings.val.autoLockon and lastHit ~= nil then
             core.sound.playSoundFile3d(getSoundFilePath("breath_in.mp3"), pself, {
-                volume = inputSettings.volume,
+                volume = inputSettings.val.volume,
             })
             startLockon(lastHit)
         end
 
         if keyForward.pressed then
-            pself.controls.pitchChange = keyForward.analog * inputSettings.lookSensitivityVertical * (-1 * dt) *
-            invertLook
+            pself.controls.pitchChange = keyForward.analog * inputSettings.val.lookSensitivityVertical * (-1 * dt) *
+                invertLook
         elseif keyBackward.pressed then
-            pself.controls.pitchChange = keyBackward.analog * inputSettings.lookSensitivityVertical * dt * invertLook
+            pself.controls.pitchChange = keyBackward.analog * inputSettings.val.lookSensitivityVertical * dt * invertLook
         else
             pself.controls.pitchChange = 0
         end
         if keyLeft.pressed then
-            pself.controls.yawChange = keyLeft.analog * inputSettings.lookSensitivityHorizontal * (-1 * dt)
+            pself.controls.yawChange = keyLeft.analog * inputSettings.val.lookSensitivityHorizontal * (-1 * dt)
         elseif keyRight.pressed then
-            pself.controls.yawChange = keyRight.analog * inputSettings.lookSensitivityHorizontal * dt
+            pself.controls.yawChange = keyRight.analog * inputSettings.val.lookSensitivityHorizontal * dt
         else
             pself.controls.yawChange = 0
         end
@@ -1167,7 +1168,7 @@ end
 
 local function onUpdate(dt)
     if dt == 0 then return end
-    if inputSettings.enableShaders then
+    if inputSettings.val.enableShaders then
         shaderUtils.HandleShaders(dt)
     end
 
@@ -1186,14 +1187,14 @@ local function onSettingsChange(data)
     stateMachine:replace(stateMachine:current())
 end
 
-inputSettings.SettingsInput:subscribe(async:callback(onSettingsChange))
-inputSettings.SettingsDPAD:subscribe(async:callback(onSettingsChange))
+inputSettings.val.subscribe(onSettingsChange)
+dpadSettings.val.subscribe(onSettingsChange)
 
 
 return {
     eventHandlers = {
         UiModeChanged = UiModeChanged,
-        [inputSettings.MOD_NAME .. 'onStruck'] = onStruck,
+        [MOD_NAME .. 'onStruck'] = onStruck,
     },
     engineHandlers = {
         onFrame = onFrame,
