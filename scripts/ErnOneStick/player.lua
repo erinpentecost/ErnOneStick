@@ -27,10 +27,7 @@ local shaderUtils = require("scripts.ErnOneStick.shader_utils")
 local core = require("openmw.core")
 local pself = require("openmw.self")
 local camera = require('openmw.camera')
-local localization = core.l10n(settings.MOD_NAME)
-local ui = require('openmw.ui')
 local util = require('openmw.util')
-local aux_util = require('openmw_aux.util')
 local async = require("openmw.async")
 local types = require('openmw.types')
 local input = require('openmw.input')
@@ -38,8 +35,6 @@ local controls = require('openmw.interfaces').Controls
 local nearby = require('openmw.nearby')
 local cameraInterface = require("openmw.interfaces").Camera
 local uiInterface = require("openmw.interfaces").UI
-
---settings.initSettings()
 
 if settings.disable() then
     print(settings.MOD_NAME .. " is disabled.")
@@ -642,6 +637,18 @@ lockSelectionState:set({
 
                 if getDistance(playerHead, e) > reach then
                     return false
+                end
+
+                -- ignore picked plants
+                if types.Container.objectIsInstance(e) then
+                    local containerRecord = types.Container.record(e)
+                    local inventory = types.Container.inventory(e)
+                    if inventory:isResolved() and containerRecord.isOrganic then
+                        if #inventory:getAll() == 0 then
+                            settings.debugPrint("Filtering picked plant " .. tostring(containerRecord.name))
+                            return false
+                        end
+                    end
                 end
                 return hasLOS(playerHead, e)
             end)
