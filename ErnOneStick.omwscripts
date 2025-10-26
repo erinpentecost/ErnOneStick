@@ -1,3 +1,7 @@
+PLAYER:scripts/ErnOneStick/settings/group.lua
+MENU:scripts/ErnOneStick/settings/page.lua
+GLOBAL:scripts/ErnOneStick/settings/options.lua
+
 PLAYER:scripts/ErnOneStick/player.lua
 GLOBAL:scripts/ErnOneStick/global.lua
 NPC, CREATURE:scripts/ErnOneStick/actor.lua

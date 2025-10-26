@@ -15,15 +15,13 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local pself = require("openmw.self")
-local combat = require('openmw.interfaces').Combat
-
 local MOD_NAME = require("scripts.ErnOneStick.ns")
+local interfaces = require("openmw.interfaces")
 
-combat.addOnHitHandler(function(attackInfo)
-    if attackInfo ~= nil and attackInfo.attacker ~= nil then
-        attackInfo.attacker:sendEvent(MOD_NAME .. 'onStruck', {
-            target = pself,
-        })
-    end
-end)
+local Group = interfaces[MOD_NAME .. "Group"].Group
+
+local inputSettings = Group("SettingsGlobal" .. MOD_NAME .. "Input")
+
+return {
+    val = inputSettings
+}

@@ -15,15 +15,24 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local pself = require("openmw.self")
-local combat = require('openmw.interfaces').Combat
-
 local MOD_NAME = require("scripts.ErnOneStick.ns")
+local interfaces = require("openmw.interfaces")
 
-combat.addOnHitHandler(function(attackInfo)
-    if attackInfo ~= nil and attackInfo.attacker ~= nil then
-        attackInfo.attacker:sendEvent(MOD_NAME .. 'onStruck', {
-            target = pself,
-        })
+local Group = interfaces[MOD_NAME .. "Group"].Group
+
+local adminSettings = Group("SettingsGlobal" .. MOD_NAME .. "Admin")
+
+local function debugPrint(str, ...)
+    if adminSettings.debugMode then
+        local arg = { ... }
+        if arg ~= nil then
+            print(string.format("DEBUG: " .. str, unpack(arg)))
+        else
+            print("DEBUG: " .. str)
+        end
     end
-end)
+end
+return {
+    debugPrint = debugPrint,
+    val = adminSettings
+}

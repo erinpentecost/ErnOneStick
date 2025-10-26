@@ -15,15 +15,15 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ]]
-local settings = require("scripts.ErnOneStick.settings")
 local pself = require("openmw.self")
+local admin = require("scripts.ErnOneStick.settings.admin")
 
 local latched = true
 
-local function hasLowFatigue()
-    local min = settings.runMinimumFatigue()
+local function hasLowFatigue(runMinimumFatigue)
+    local min = runMinimumFatigue
     if min <= 0 then
-        settings.debugPrint("fatigue threshold: " .. tostring(min) .. ", low")
+        admin.debugPrint("fatigue threshold: " .. tostring(min) .. ", low")
         return false
     end
     if min >= 100 then
